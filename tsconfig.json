@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "module": "es2020",
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strict": true,
+    "baseUrl": "./",
+    "noEmit": true,
+    "forceConsistentCasingInFileNames": true,
+    "downlevelIteration": true,
+    "target": "es2019",
+  },
+  "exclude": ["node_modules/*"]
+}
