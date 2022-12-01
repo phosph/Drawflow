@@ -1,5 +1,5 @@
 {
-  "name": "drawflow",
+  "name": "@jashitory/drawflow",
   "version": "0.0.59-2",
   "description": "Simple flow library",
   "main": "dist/drawflow.js",
