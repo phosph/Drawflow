@@ -1,6 +1,6 @@
 {
   "name": "drawflow",
-  "version": "0.0.59-1",
+  "version": "0.0.59-2",
   "description": "Simple flow library",
   "main": "dist/drawflow.js",
   "exports": "./dist/drawflow.js",
@@ -39,6 +39,7 @@
   },
   "homepage": "https://github.com/phophs/Drawflow#readme",
   "devDependencies": {
+    "@types/uuid": "^9.0.0",
     "esbuild": "^0.15.13",
     "gulp": "^4.0.2",
     "gulp-concat": "^2.6.1",
@@ -47,5 +48,8 @@
     "rollup": "^3.2.5",
     "typescript": "^4.8.4",
     "vite": "^3.2.2"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0"
   }
 }

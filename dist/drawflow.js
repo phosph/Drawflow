@@ -1,9 +1,80 @@
+var __accessCheck = (obj, member, msg) => {
+  if (!member.has(obj))
+    throw TypeError("Cannot " + msg);
+};
+var __privateGet = (obj, member, getter) => {
+  __accessCheck(obj, member, "read from private field");
+  return getter ? getter.call(obj) : member.get(obj);
+};
+var __privateAdd = (obj, member, value) => {
+  if (member.has(obj))
+    throw TypeError("Cannot add the same private member more than once");
+  member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
+};
+var __privateSet = (obj, member, value, setter) => {
+  __accessCheck(obj, member, "write to private field");
+  setter ? setter.call(obj, value) : member.set(obj, value);
+  return value;
+};
+
+// node_modules/.pnpm/uuid@9.0.0/node_modules/uuid/dist/esm-browser/rng.js
+var getRandomValues;
+var rnds8 = new Uint8Array(16);
+function rng() {
+  if (!getRandomValues) {
+    getRandomValues = typeof crypto !== "undefined" && crypto.getRandomValues && crypto.getRandomValues.bind(crypto);
+    if (!getRandomValues) {
+      throw new Error("crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported");
+    }
+  }
+  return getRandomValues(rnds8);
+}
+
+// node_modules/.pnpm/uuid@9.0.0/node_modules/uuid/dist/esm-browser/stringify.js
+var byteToHex = [];
+for (let i = 0; i < 256; ++i) {
+  byteToHex.push((i + 256).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+}
+
+// node_modules/.pnpm/uuid@9.0.0/node_modules/uuid/dist/esm-browser/native.js
+var randomUUID = typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID.bind(crypto);
+var native_default = {
+  randomUUID
+};
+
+// node_modules/.pnpm/uuid@9.0.0/node_modules/uuid/dist/esm-browser/v4.js
+function v4(options, buf, offset) {
+  if (native_default.randomUUID && !buf && !options) {
+    return native_default.randomUUID();
+  }
+  options = options || {};
+  const rnds = options.random || (options.rng || rng)();
+  rnds[6] = rnds[6] & 15 | 64;
+  rnds[8] = rnds[8] & 63 | 128;
+  if (buf) {
+    offset = offset || 0;
+    for (let i = 0; i < 16; ++i) {
+      buf[offset + i] = rnds[i];
+    }
+    return buf;
+  }
+  return unsafeStringify(rnds);
+}
+var v4_default = v4;
+
 // src/drawflow.ts
+var htmlToTemplate = (_template) => {
+  const template = document.createElement("template");
+  template.innerHTML = _template;
+  return template;
+};
 var html = (strings, ...values) => String.raw({ raw: strings }, ...values);
 var deleteBoxTemplate = document.createElement("template");
-deleteBoxTemplate.innerHTML = html`
-    <div class="drawflow-delete">x</div>
-`;
+deleteBoxTemplate.innerHTML = html` <div class="drawflow-delete">x</div> `;
+var _editor_mode;
 var Drawflow = class {
   constructor(container, render, parent) {
     this.container = container;
@@ -15,6 +86,8 @@ var Drawflow = class {
     this.ele_selected = null;
     this.node_selected = null;
     this.drag = false;
+    this._canvasX = 0;
+    this._canvasY = 0;
     this.reroute = false;
     this.reroute_fix_curvature = false;
     this.curvature = 0.5;
@@ -42,7 +115,7 @@ var Drawflow = class {
     this.noderegister = {};
     this.drawflow = { drawflow: { Home: { data: {} } } };
     this.module = "Home";
-    this.editor_mode = "edit";
+    __privateAdd(this, _editor_mode, "edit");
     this.zoom = 1;
     this.zoom_max = 1.6;
     this.zoom_min = 0.5;
@@ -51,8 +124,32 @@ var Drawflow = class {
     this.evCache = new Array();
     this.prevDiff = -1;
   }
+  get canvasX() {
+    return this._canvasX;
+  }
+  set canvasX(val) {
+    var _a;
+    this._canvasX = val;
+    (_a = this.precanvas) == null ? void 0 : _a.style.setProperty("--x", `${val}px`);
+  }
+  get canvasY() {
+    return this._canvasY;
+  }
+  set canvasY(val) {
+    var _a;
+    this._canvasY = val;
+    (_a = this.precanvas) == null ? void 0 : _a.style.setProperty("--y", `${val}px`);
+  }
   get currentModule() {
     return this.module;
+  }
+  set editor_mode(mode) {
+    __privateSet(this, _editor_mode, mode);
+    if (this.precanvas)
+      this.precanvas.dataset.mode = mode;
+  }
+  get editor_mode() {
+    return __privateGet(this, _editor_mode);
   }
   start() {
     this.container.classList.add("parent-drawflow");
@@ -60,6 +157,9 @@ var Drawflow = class {
     this.precanvas = document.createElement("div");
     Reflect.defineProperty(this, "precanvas", { writable: false });
     this.precanvas.classList.add("drawflow");
+    this.canvasX = this.canvasX;
+    this.canvasY = this.canvasY;
+    this.editor_mode = this.editor_mode;
     this.container.appendChild(this.precanvas);
     this.container.addEventListener("mouseup", this.dragEnd.bind(this));
     this.container.addEventListener("mousemove", this.position.bind(this));
@@ -132,15 +232,18 @@ var Drawflow = class {
     }
   }
   load() {
-    for (var key in this.drawflow.drawflow[this.module].data) {
-      this.addNodeImport(
-        this.drawflow.drawflow[this.module].data[key],
-        this.precanvas
-      );
+    if (!this.precanvas)
+      throw new Error("drawflow instance is not started");
+    for (const node of Object.values(
+      this.drawflow.drawflow[this.module].data
+    )) {
+      this.addNodeImport(node, this.precanvas);
     }
     if (this.reroute) {
-      for (var key in this.drawflow.drawflow[this.module].data) {
-        this.addRerouteImport(this.drawflow.drawflow[this.module].data[key]);
+      for (const node of Object.values(
+        this.drawflow.drawflow[this.module].data
+      )) {
+        this.addRerouteImport(node);
       }
     }
     for (var key in this.drawflow.drawflow[this.module].data) {
@@ -332,44 +435,49 @@ var Drawflow = class {
     }
     this.dispatch("clickEnd", e);
   }
+  updateNodePosition(id, x, y, module = this.module) {
+    const ele_selected = this.precanvas.querySelector(
+      `#node-${id}`
+    );
+    ele_selected.style.setProperty("--top", `${y}px`);
+    ele_selected.style.setProperty("--left", `${x}px`);
+    this.drawflow.drawflow[module].data[id].pos_x = x;
+    this.drawflow.drawflow[module].data[id].pos_y = y;
+    this.updateConnectionNodes(`node-${id}`);
+  }
   position(e) {
-    if (e.type === "touchmove") {
-      var e_pos_x = e.touches[0].clientX;
-      var e_pos_y = e.touches[0].clientY;
-    } else {
-      var e_pos_x = e.clientX;
-      var e_pos_y = e.clientY;
-    }
+    const { clientX: e_pos_x, clientY: e_pos_y } = e instanceof MouseEvent ? e : e.touches[0];
     if (this.connection) {
       this.updateConnection(e_pos_x, e_pos_y);
     }
     if (this.editor_selected) {
-      x = this.canvas_x + -(this.pos_x - e_pos_x);
-      y = this.canvas_y + -(this.pos_y - e_pos_y);
+      const x = this.canvas_x + -(this.pos_x - e_pos_x);
+      const y = this.canvas_y + -(this.pos_y - e_pos_y);
       this.dispatch("translate", { x, y });
-      this.precanvas.style.transform = "translate(" + x + "px, " + y + "px) scale(" + this.zoom + ")";
-    }
-    if (this.drag) {
+      this.canvasX = x;
+      this.canvasY = y;
+    } else if (this.drag && this.ele_selected) {
       e.preventDefault();
-      var x = (this.pos_x - e_pos_x) * this.precanvas.clientWidth / (this.precanvas.clientWidth * this.zoom);
-      var y = (this.pos_y - e_pos_y) * this.precanvas.clientHeight / (this.precanvas.clientHeight * this.zoom);
+      const { offsetTop, offsetLeft, id } = this.ele_selected;
+      const x = offsetLeft - (this.pos_x - e_pos_x) / this.zoom - this.canvasX;
+      const y = offsetTop - (this.pos_y - e_pos_y) / this.zoom - this.canvasY;
       this.pos_x = e_pos_x;
       this.pos_y = e_pos_y;
-      this.ele_selected.style.top = this.ele_selected.offsetTop - y + "px";
-      this.ele_selected.style.left = this.ele_selected.offsetLeft - x + "px";
-      this.drawflow.drawflow[this.module].data[this.ele_selected.id.slice(5)].pos_x = this.ele_selected.offsetLeft - x;
-      this.drawflow.drawflow[this.module].data[this.ele_selected.id.slice(5)].pos_y = this.ele_selected.offsetTop - y;
-      this.updateConnectionNodes(this.ele_selected.id);
-    }
-    if (this.drag_point) {
-      var x = (this.pos_x - e_pos_x) * this.precanvas.clientWidth / (this.precanvas.clientWidth * this.zoom);
-      var y = (this.pos_y - e_pos_y) * this.precanvas.clientHeight / (this.precanvas.clientHeight * this.zoom);
+      this.ele_selected.style.setProperty("--top", `${y}px`);
+      this.ele_selected.style.setProperty("--left", `${x}px`);
+      this.drawflow.drawflow[this.module].data[id.slice(5)].pos_x = x;
+      this.drawflow.drawflow[this.module].data[id.slice(5)].pos_y = y;
+      this.updateConnectionNodes(id);
+    } else if (this.drag_point) {
+      console.log("drag_point");
       this.pos_x = e_pos_x;
       this.pos_y = e_pos_y;
-      var pos_x = this.pos_x * (this.precanvas.clientWidth / (this.precanvas.clientWidth * this.zoom)) - this.precanvas.getBoundingClientRect().x * (this.precanvas.clientWidth / (this.precanvas.clientWidth * this.zoom));
-      var pos_y = this.pos_y * (this.precanvas.clientHeight / (this.precanvas.clientHeight * this.zoom)) - this.precanvas.getBoundingClientRect().y * (this.precanvas.clientHeight / (this.precanvas.clientHeight * this.zoom));
-      this.ele_selected.setAttributeNS(null, "cx", pos_x.toString());
-      this.ele_selected.setAttributeNS(null, "cy", pos_y.toString());
+      const { x, y } = this.precanvas.getBoundingClientRect();
+      const { clientWidth, clientHeight } = this.precanvas;
+      const pos_x = 1 / this.zoom * (this.pos_x - x);
+      const pos_y = 1 / this.zoom * (this.pos_y - y);
+      this.ele_selected.setAttribute("cx", pos_x.toString());
+      this.ele_selected.setAttribute("cy", pos_y.toString());
       const nodeUpdate = this.ele_selected.parentElement.classList[2].slice(9);
       const nodeUpdateIn = this.ele_selected.parentElement.classList[1].slice(13);
       const output_class = this.ele_selected.parentElement.classList[3];
@@ -385,9 +493,9 @@ var Drawflow = class {
         }
       }
       const nodeId = nodeUpdate.slice(5);
-      const searchConnection = this.drawflow.drawflow[this.module].data[nodeId].outputs[output_class].connections.findIndex(function(item, i) {
-        return item.node === nodeUpdateIn && item.output === input_class;
-      });
+      const searchConnection = this.drawflow.drawflow[this.module].data[nodeId].outputs[output_class].connections.findIndex(
+        (item) => item.node === nodeUpdateIn && item.output === input_class
+      );
       this.drawflow.drawflow[this.module].data[nodeId].outputs[output_class].connections[searchConnection].points[numberPointPosition] = {
         pos_x,
         pos_y
@@ -454,12 +562,16 @@ var Drawflow = class {
         var output_id = this.ele_selected.parentElement.parentElement.id;
         var output_class = this.ele_selected.classList[1];
         if (output_id !== input_id && input_class !== false) {
-          if (this.container.querySelectorAll(
-            ".connection.node_in_" + input_id + ".node_out_" + output_id + "." + output_class + "." + input_class
-          ).length === 0) {
-            this.connection_ele.classList.add("node_in_" + input_id);
-            this.connection_ele.classList.add("node_out_" + output_id);
-            this.connection_ele.classList.add(output_class);
+          if (!this.container.querySelector(
+            `.connection.node_in_${input_id}.node_out_${output_id}.${output_class}.${input_class}`
+          )) {
+            this.connection_ele.dataset.node_in = input_id;
+            this.connection_ele.dataset.node_out = output_id;
+            this.connection_ele.classList.add(
+              `node_in_${input_id}`,
+              `node_out_${output_id}`,
+              output_class
+            );
             if (typeof input_class === "string")
               this.connection_ele.classList.add(input_class);
             var id_input = input_id.slice(5);
@@ -505,7 +617,9 @@ var Drawflow = class {
       return false;
     }
     if (this.precanvas.getElementsByClassName("drawflow-delete").length) {
-      for (const el of this.precanvas.getElementsByClassName("drawflow-delete")) {
+      for (const el of this.precanvas.getElementsByClassName(
+        "drawflow-delete"
+      )) {
         el.remove();
       }
     }
@@ -560,7 +674,7 @@ var Drawflow = class {
     this.canvas_x = this.canvas_x / this.zoom_last_value * this.zoom;
     this.canvas_y = this.canvas_y / this.zoom_last_value * this.zoom;
     this.zoom_last_value = this.zoom;
-    this.precanvas.style.transform = "translate(" + this.canvas_x + "px, " + this.canvas_y + "px) scale(" + this.zoom + ")";
+    this.precanvas.style.setProperty("--scale", this.zoom.toString());
   }
   zoom_in() {
     if (this.zoom < this.zoom_max) {
@@ -581,62 +695,42 @@ var Drawflow = class {
     }
   }
   createCurvature(start_pos_x, start_pos_y, end_pos_x, end_pos_y, curvature_value, type) {
-    var line_x = start_pos_x;
-    var line_y = start_pos_y;
-    var x = end_pos_x;
-    var y = end_pos_y;
-    var curvature = curvature_value;
+    const line_x = start_pos_x;
+    const line_y = start_pos_y;
+    const x = end_pos_x;
+    const y = end_pos_y;
+    const curvature = curvature_value;
+    let hx1;
+    let hx2;
     switch (type) {
       case "open":
-        if (start_pos_x >= end_pos_x) {
-          var hx1 = line_x + Math.abs(x - line_x) * curvature;
-          var hx2 = x - Math.abs(x - line_x) * (curvature * -1);
-        } else {
-          var hx1 = line_x + Math.abs(x - line_x) * curvature;
-          var hx2 = x - Math.abs(x - line_x) * curvature;
-        }
-        return " M " + line_x + " " + line_y + " C " + hx1 + " " + line_y + " " + hx2 + " " + y + " " + x + "  " + y;
+        hx1 = line_x + Math.abs(x - line_x) * curvature;
+        hx2 = x - Math.abs(x - line_x) * (start_pos_x >= end_pos_x ? curvature * -1 : curvature);
         break;
       case "close":
-        if (start_pos_x >= end_pos_x) {
-          var hx1 = line_x + Math.abs(x - line_x) * (curvature * -1);
-          var hx2 = x - Math.abs(x - line_x) * curvature;
-        } else {
-          var hx1 = line_x + Math.abs(x - line_x) * curvature;
-          var hx2 = x - Math.abs(x - line_x) * curvature;
-        }
-        return " M " + line_x + " " + line_y + " C " + hx1 + " " + line_y + " " + hx2 + " " + y + " " + x + "  " + y;
+        hx1 = line_x + Math.abs(x - line_x) * (start_pos_x >= end_pos_x ? curvature * -1 : curvature);
+        hx2 = x - Math.abs(x - line_x) * curvature;
         break;
       case "other":
-        if (start_pos_x >= end_pos_x) {
-          var hx1 = line_x + Math.abs(x - line_x) * (curvature * -1);
-          var hx2 = x - Math.abs(x - line_x) * (curvature * -1);
-        } else {
-          var hx1 = line_x + Math.abs(x - line_x) * curvature;
-          var hx2 = x - Math.abs(x - line_x) * curvature;
-        }
-        return " M " + line_x + " " + line_y + " C " + hx1 + " " + line_y + " " + hx2 + " " + y + " " + x + "  " + y;
+        hx1 = line_x + Math.abs(x - line_x) * (start_pos_x >= end_pos_x ? curvature * -1 : curvature);
+        hx2 = x - Math.abs(x - line_x) * (start_pos_x >= end_pos_x ? curvature * -1 : curvature);
         break;
       default:
-        var hx1 = line_x + Math.abs(x - line_x) * curvature;
-        var hx2 = x - Math.abs(x - line_x) * curvature;
-        return " M " + line_x + " " + line_y + " C " + hx1 + " " + line_y + " " + hx2 + " " + y + " " + x + "  " + y;
+        hx1 = line_x + Math.abs(x - line_x) * curvature;
+        hx2 = x - Math.abs(x - line_x) * curvature;
     }
+    return `M ${line_x} ${line_y} C ${hx1} ${line_y} ${hx2} ${y} ${x} ${y}`;
   }
   drawConnection(ele) {
-    var connection = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "svg"
-    );
-    this.connection_ele = connection;
-    var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.classList.add("main-path");
-    path.setAttributeNS(null, "d", "");
-    connection.classList.add("connection");
-    connection.appendChild(path);
+    const connection = htmlToTemplate(html`
+      <svg class="connection">
+        <path class="main-path" d="" />
+      </svg>
+    `).content.cloneNode(true);
+    this.connection_ele = connection.querySelector(".connection");
     this.precanvas.appendChild(connection);
-    var id_output = ele.parentElement.parentElement.id.slice(5);
-    var output_class = ele.classList[1];
+    const id_output = ele.parentElement.parentElement.id.slice(5);
+    const output_class = ele.classList[1];
     this.dispatch("connectionStart", {
       output_id: id_output,
       output_class
@@ -665,245 +759,233 @@ var Drawflow = class {
     );
     path.setAttributeNS(null, "d", lineCurve);
   }
-  addConnection(id_output, id_input, output_class, input_class) {
-    var nodeOneModule = this.getModuleFromNodeId(id_output);
-    var nodeTwoModule = this.getModuleFromNodeId(id_input);
-    if (nodeOneModule === nodeTwoModule) {
-      var dataNode = this.getNodeFromId(id_output);
-      var exist = false;
-      for (var checkOutput in dataNode.outputs[output_class].connections) {
-        var connectionSearch = dataNode.outputs[output_class].connections[checkOutput];
-        if (connectionSearch.node == id_input && connectionSearch.output == input_class) {
-          exist = true;
-        }
+  addConnection(id_output, id_input, output_class, input_class, connection_class = "") {
+    var _a, _b, _c;
+    const nodeOneModule = this.getModuleFromNodeId(id_output);
+    if (nodeOneModule === this.getModuleFromNodeId(id_input)) {
+      const dataNode = this.getNodeFromId(id_output);
+      const exist = !!((_a = dataNode.outputs[output_class]) == null ? void 0 : _a.connections.find(
+        ({ node, output }) => node === id_input && output === input_class
+      ));
+      if (exist)
+        return;
+      (_b = this.drawflow.drawflow[nodeOneModule].data[id_output].outputs[output_class]) == null ? void 0 : _b.connections.push({
+        node: id_input.toString(),
+        output: input_class,
+        pathClass: connection_class
+      });
+      (_c = this.drawflow.drawflow[nodeOneModule].data[id_input].inputs[input_class]) == null ? void 0 : _c.connections.push({
+        node: id_output.toString(),
+        input: output_class,
+        pathClass: connection_class
+      });
+      if (this.module === nodeOneModule && this.precanvas) {
+        const con = htmlToTemplate(html`
+          <svg
+            class="connection node_in_node-${id_input} node_out_node-${id_output} ${output_class} ${input_class} ${connection_class}"
+            data-node_in="node-${id_input}"
+            data-node_out="node-${id_output}"
+          >
+            <path class="main-path" d="" />
+          </svg>
+        `).content.cloneNode(true);
+        this.precanvas.appendChild(con);
+        this.updateConnectionNodes(`node-${id_output}`);
+        this.updateConnectionNodes(`node-${id_input}`);
       }
-      if (exist === false) {
-        this.drawflow.drawflow[nodeOneModule].data[id_output].outputs[output_class].connections.push({ node: id_input.toString(), output: input_class });
-        this.drawflow.drawflow[nodeOneModule].data[id_input].inputs[input_class].connections.push({ node: id_output.toString(), input: output_class });
-        if (this.module === nodeOneModule) {
-          var connection = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "svg"
-          );
-          var path = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "path"
-          );
-          path.classList.add("main-path");
-          path.setAttributeNS(null, "d", "");
-          connection.classList.add("connection");
-          connection.classList.add("node_in_node-" + id_input);
-          connection.classList.add("node_out_node-" + id_output);
-          connection.classList.add(output_class);
-          connection.classList.add(input_class);
-          connection.appendChild(path);
-          this.precanvas.appendChild(connection);
-          this.updateConnectionNodes("node-" + id_output);
-          this.updateConnectionNodes("node-" + id_input);
-        }
-        this.dispatch("connectionCreated", {
-          output_id: id_output,
-          input_id: id_input,
-          output_class,
-          input_class
-        });
-      }
+      this.dispatch("connectionCreated", {
+        output_id: id_output,
+        input_id: id_input,
+        output_class,
+        input_class
+      });
     }
   }
   updateConnectionNodes(id) {
-    const idSearch = `node_in_${id}`;
+    const idSearchIn = `node_in_${id}`;
     const idSearchOut = `node_out_${id}`;
-    var line_path = this.line_path / 2;
     const container = this.container;
     const precanvas = this.precanvas;
     const curvature = this.curvature;
-    const createCurvature = this.createCurvature;
     const reroute_curvature = this.reroute_curvature;
     const reroute_curvature_start_end = this.reroute_curvature_start_end;
     const reroute_fix_curvature = this.reroute_fix_curvature;
     const rerouteWidth = this.reroute_width;
     const zoom = this.zoom;
-    let precanvasWitdhZoom = precanvas.clientWidth / (precanvas.clientWidth * zoom);
-    precanvasWitdhZoom = precanvasWitdhZoom || 0;
-    let precanvasHeightZoom = precanvas.clientHeight / (precanvas.clientHeight * zoom);
-    precanvasHeightZoom = precanvasHeightZoom || 0;
-    const elemsOut = container.querySelectorAll(`.${idSearchOut}`);
-    Object.keys(elemsOut).map((item, index) => {
-      if (elemsOut[item].querySelector(".point") === null) {
-        var elemtsearchId_out = container.querySelector(
-          `#${id}`
+    const precanvasWitdhZoom = precanvas.clientWidth / (precanvas.clientWidth * zoom) || 0;
+    const precanvasHeightZoom = precanvas.clientHeight / (precanvas.clientHeight * zoom) || 0;
+    const { x: pcX, y: pcY } = precanvas.getBoundingClientRect();
+    for (const el of container.querySelectorAll(
+      `.${idSearchOut}`
+    )) {
+      if (el.querySelector(".point") === null) {
+        const id_search = el.dataset.node_in;
+        if (!id_search)
+          return;
+        const elStart = container.querySelector(
+          `#${id} .${el.classList[3]}`
         );
-        var id_search = elemsOut[item].classList[1].replace("node_in_", "");
-        var elemtsearchId = container.querySelector(`#${id_search}`);
-        var elemtsearch = elemtsearchId.querySelectorAll(
-          "." + elemsOut[item].classList[4]
-        )[0];
-        var eX = elemtsearch.offsetWidth / 2 + (elemtsearch.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-        var eY = elemtsearch.offsetHeight / 2 + (elemtsearch.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-        var elemtsearchOut = elemtsearchId_out.querySelectorAll(
-          "." + elemsOut[item].classList[3]
-        )[0];
-        var line_x = elemtsearchOut.offsetWidth / 2 + (elemtsearchOut.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-        var line_y = elemtsearchOut.offsetHeight / 2 + (elemtsearchOut.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-        var x = eX;
-        var y = eY;
-        const lineCurve = createCurvature(
-          line_x,
-          line_y,
-          x,
-          y,
+        if (!elStart)
+          return;
+        const elEnd = container.querySelector(
+          `#${id_search} .${el.classList[4]}`
+        );
+        if (!elEnd)
+          return;
+        const { x: elStartX, y: elStartY } = elEnd.getBoundingClientRect();
+        const { x: elEndX, y: elEndY } = elStart.getBoundingClientRect();
+        const endX = elEnd.offsetWidth / 2 + (elStartX - pcX) * precanvasWitdhZoom;
+        const endY = elEnd.offsetHeight / 2 + (elStartY - pcY) * precanvasHeightZoom;
+        const startX = elStart.offsetWidth / 2 + (elEndX - pcX) * precanvasWitdhZoom;
+        const startY = elStart.offsetHeight / 2 + (elEndY - pcY) * precanvasHeightZoom;
+        const lineCurve = this.createCurvature(
+          startX,
+          startY,
+          endX,
+          endY,
           curvature,
           "openclose"
         );
-        elemsOut[item].children[0].setAttributeNS(null, "d", lineCurve);
+        el.children[0].setAttributeNS(null, "d", lineCurve);
       } else {
-        const points = elemsOut[item].querySelectorAll(
-          ".point"
-        );
+        const points = el.querySelectorAll(".point");
         let linecurve = "";
         const reoute_fix = [];
-        points.forEach((item2, i) => {
+        points.forEach((item, i) => {
           if (i === 0 && points.length - 1 === 0) {
-            var elemtsearchId_out2 = container.querySelector(
-              `#${id}`
-            );
-            var elemtsearch2 = item2;
-            var eX2 = (elemtsearch2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var eY2 = (elemtsearch2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var elemtsearchOut2 = elemtsearchId_out2.querySelectorAll(
-              "." + item2.parentElement.classList[3]
-            )[0];
-            var line_x2 = elemtsearchOut2.offsetWidth / 2 + (elemtsearchOut2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-            var line_y2 = elemtsearchOut2.offsetHeight / 2 + (elemtsearchOut2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-            var x2 = eX2;
-            var y2 = eY2;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
-              reroute_curvature_start_end,
-              "open"
-            );
-            linecurve += lineCurveSearch;
-            reoute_fix.push(lineCurveSearch);
-            var elemtsearchId_out2 = item2;
-            var id_search2 = item2.parentElement.classList[1].replace(
-              "node_in_",
-              ""
-            );
-            var elemtsearchId2 = container.querySelector(
-              `#${id_search2}`
-            );
-            var elemtsearch2 = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[4]
-            )[0];
-            var elemtsearchIn = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[4]
-            )[0];
-            var eX2 = elemtsearchIn.offsetWidth / 2 + (elemtsearchIn.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-            var eY2 = elemtsearchIn.offsetHeight / 2 + (elemtsearchIn.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-            var line_x2 = (elemtsearchId_out2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var line_y2 = (elemtsearchId_out2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var x2 = eX2;
-            var y2 = eY2;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
-              reroute_curvature_start_end,
-              "close"
-            );
-            linecurve += lineCurveSearch;
-            reoute_fix.push(lineCurveSearch);
+            const { x: elX, y: elY } = item.getBoundingClientRect();
+            console.log(item);
+            {
+              const eX2 = (elX - pcX) * precanvasWitdhZoom + rerouteWidth;
+              const eY2 = (elY - pcY) * precanvasHeightZoom + rerouteWidth;
+              const elemtsearchOut2 = container.querySelector(
+                `#${id} .${item.parentElement.classList[3]}`
+              );
+              const { x: elSearchOutX, y: elSearchOutY } = elemtsearchOut2.getBoundingClientRect();
+              const line_x2 = elemtsearchOut2.offsetWidth / 2 + (elSearchOutX - pcX) * precanvasWitdhZoom;
+              const line_y2 = elemtsearchOut2.offsetHeight / 2 + (elSearchOutY - pcY) * precanvasHeightZoom;
+              const lineCurveSearch2 = this.createCurvature(
+                line_x2,
+                line_y2,
+                eX2,
+                eY2,
+                reroute_curvature_start_end,
+                "open"
+              );
+              linecurve += lineCurveSearch2;
+              reoute_fix.push(lineCurveSearch2);
+            }
+            {
+              const id_search2 = item.parentElement.classList[1].replace(
+                "node_in_",
+                ""
+              );
+              const elemtsearchIn2 = container.querySelector(
+                `#${id_search2} .${item.parentElement.classList[4]}`
+              );
+              const { x: elSearchX, y: elSearchY } = elemtsearchIn2.getBoundingClientRect();
+              const eX2 = elemtsearchIn2.offsetWidth / 2 + (elSearchX - pcX) * precanvasWitdhZoom;
+              const eY2 = elemtsearchIn2.offsetHeight / 2 + (elSearchY - pcY) * precanvasHeightZoom;
+              const line_x2 = (elX - pcX) * precanvasWitdhZoom + rerouteWidth;
+              const line_y2 = (elY - pcY) * precanvasHeightZoom + rerouteWidth;
+              const lineCurveSearch2 = this.createCurvature(
+                line_x2,
+                line_y2,
+                eX2,
+                eY2,
+                reroute_curvature_start_end,
+                "close"
+              );
+              linecurve += lineCurveSearch2;
+              reoute_fix.push(lineCurveSearch2);
+            }
           } else if (i === 0) {
-            var elemtsearchId_out2 = container.querySelector(
+            var elemtsearchId_out = container.querySelector(
               `#${id}`
             );
-            var elemtsearch2 = item2;
-            var eX2 = (elemtsearch2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var eY2 = (elemtsearch2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var elemtsearchOut2 = elemtsearchId_out2.querySelectorAll(
-              "." + item2.parentElement.classList[3]
+            var elemtsearch = item;
+            var eX = (elemtsearch.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
+            var eY = (elemtsearch.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
+            var elemtsearchOut = elemtsearchId_out.querySelectorAll(
+              "." + item.parentElement.classList[3]
             )[0];
-            var line_x2 = elemtsearchOut2.offsetWidth / 2 + (elemtsearchOut2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-            var line_y2 = elemtsearchOut2.offsetHeight / 2 + (elemtsearchOut2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-            var x2 = eX2;
-            var y2 = eY2;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var line_x = elemtsearchOut.offsetWidth / 2 + (elemtsearchOut.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
+            var line_y = elemtsearchOut.offsetHeight / 2 + (elemtsearchOut.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature_start_end,
               "open"
             );
             linecurve += lineCurveSearch;
             reoute_fix.push(lineCurveSearch);
-            var elemtsearchId_out2 = item2;
-            var elemtsearch2 = points[i + 1];
-            var eX2 = (elemtsearch2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var eY2 = (elemtsearch2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var line_x2 = (elemtsearchId_out2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var line_y2 = (elemtsearchId_out2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var x2 = eX2;
-            var y2 = eY2;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var elemtsearchId_out = item;
+            var elemtsearch = points[i + 1];
+            var eX = (elemtsearch.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
+            var eY = (elemtsearch.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
+            var line_x = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
+            var line_y = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature,
               "other"
             );
             linecurve += lineCurveSearch;
             reoute_fix.push(lineCurveSearch);
           } else if (i === points.length - 1) {
-            var elemtsearchId_out2 = item2;
-            var id_search2 = item2.parentElement.classList[1].replace(
+            var elemtsearchId_out = item;
+            var id_search = item.parentElement.classList[1].replace(
               "node_in_",
               ""
             );
-            var elemtsearchId2 = container.querySelector(
-              `#${id_search2}`
+            var elemtsearchId = container.querySelector(
+              `#${id_search}`
             );
-            var elemtsearch2 = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[4]
+            var elemtsearch = elemtsearchId.querySelectorAll(
+              "." + item.parentElement.classList[4]
             )[0];
-            var elemtsearchIn = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[4]
+            var elemtsearchIn = elemtsearchId.querySelectorAll(
+              "." + item.parentElement.classList[4]
             )[0];
-            var eX2 = elemtsearchIn.offsetWidth / 2 + (elemtsearchIn.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-            var eY2 = elemtsearchIn.offsetHeight / 2 + (elemtsearchIn.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-            var line_x2 = (elemtsearchId_out2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * (precanvas.clientWidth / (precanvas.clientWidth * zoom)) + rerouteWidth;
-            var line_y2 = (elemtsearchId_out2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * (precanvas.clientHeight / (precanvas.clientHeight * zoom)) + rerouteWidth;
-            var x2 = eX2;
-            var y2 = eY2;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var eX = elemtsearchIn.offsetWidth / 2 + (elemtsearchIn.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
+            var eY = elemtsearchIn.offsetHeight / 2 + (elemtsearchIn.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
+            var line_x = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * (precanvas.clientWidth / (precanvas.clientWidth * zoom)) + rerouteWidth;
+            var line_y = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * (precanvas.clientHeight / (precanvas.clientHeight * zoom)) + rerouteWidth;
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature_start_end,
               "close"
             );
             linecurve += lineCurveSearch;
             reoute_fix.push(lineCurveSearch);
           } else {
-            var elemtsearchId_out2 = item2;
-            var elemtsearch2 = points[i + 1];
-            var eX2 = (elemtsearch2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * (precanvas.clientWidth / (precanvas.clientWidth * zoom)) + rerouteWidth;
-            var eY2 = (elemtsearch2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * (precanvas.clientHeight / (precanvas.clientHeight * zoom)) + rerouteWidth;
-            var line_x2 = (elemtsearchId_out2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * (precanvas.clientWidth / (precanvas.clientWidth * zoom)) + rerouteWidth;
-            var line_y2 = (elemtsearchId_out2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * (precanvas.clientHeight / (precanvas.clientHeight * zoom)) + rerouteWidth;
-            var x2 = eX2;
-            var y2 = eY2;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var elemtsearchId_out = item;
+            var elemtsearch = points[i + 1];
+            var eX = (elemtsearch.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * (precanvas.clientWidth / (precanvas.clientWidth * zoom)) + rerouteWidth;
+            var eY = (elemtsearch.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * (precanvas.clientHeight / (precanvas.clientHeight * zoom)) + rerouteWidth;
+            var line_x = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * (precanvas.clientWidth / (precanvas.clientWidth * zoom)) + rerouteWidth;
+            var line_y = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * (precanvas.clientHeight / (precanvas.clientHeight * zoom)) + rerouteWidth;
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature,
               "other"
             );
@@ -913,32 +995,28 @@ var Drawflow = class {
         });
         if (reroute_fix_curvature) {
           reoute_fix.forEach((itempath, i) => {
-            elemsOut[item].children[i].setAttributeNS(null, "d", itempath);
+            el.children[i].setAttributeNS(null, "d", itempath);
           });
         } else {
-          elemsOut[item].children[0].setAttributeNS(null, "d", linecurve);
+          el.children[0].setAttributeNS(null, "d", linecurve);
         }
       }
-    });
-    const elems = container.querySelectorAll(`.${idSearch}`);
-    Object.keys(elems).map(function(item, index) {
-      if (elems[item].querySelector(".point") === null) {
-        var elemtsearchId_in = container.querySelector(`#${id}`);
-        var id_search = elems[item].classList[2].replace("node_out_", "");
-        var elemtsearchId = container.querySelector(
-          `#${id_search}`
+    }
+    for (const el of container.querySelectorAll(`.${idSearchIn}`)) {
+      if (el.querySelector(".point") === null) {
+        const elemtsearch = container.querySelector(
+          `#${el.dataset.node_out} .${el.classList[3]}`
         );
-        var elemtsearch = elemtsearchId.querySelectorAll(
-          "." + elems[item].classList[3]
+        console.log(el, `#${el.dataset.node_out} .${el.classList[3]}`);
+        const { x: elX, y: elY } = elemtsearch.getBoundingClientRect();
+        const line_x = elemtsearch.offsetWidth / 2 + (elX - pcX) * precanvasWitdhZoom;
+        const line_y = elemtsearch.offsetHeight / 2 + (elY - pcY) * precanvasHeightZoom;
+        const elemtsearchId_in = container.querySelectorAll(
+          `#${id} .${el.classList[4]}`
         )[0];
-        var line_x = elemtsearch.offsetWidth / 2 + (elemtsearch.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-        var line_y = elemtsearch.offsetHeight / 2 + (elemtsearch.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-        var elemtsearchId_in = elemtsearchId_in.querySelectorAll(
-          "." + elems[item].classList[4]
-        )[0];
-        var x = elemtsearchId_in.offsetWidth / 2 + (elemtsearchId_in.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-        var y = elemtsearchId_in.offsetHeight / 2 + (elemtsearchId_in.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-        const lineCurve = createCurvature(
+        const x = elemtsearchId_in.offsetWidth / 2 + (elemtsearchId_in.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
+        const y = elemtsearchId_in.offsetHeight / 2 + (elemtsearchId_in.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
+        const lineCurve = this.createCurvature(
           line_x,
           line_y,
           x,
@@ -946,160 +1024,160 @@ var Drawflow = class {
           curvature,
           "openclose"
         );
-        elems[item].children[0].setAttributeNS(null, "d", lineCurve);
+        el.children[0].setAttributeNS(null, "d", lineCurve);
       } else {
-        const points = elems[item].querySelectorAll(".point");
+        const points = el.querySelectorAll(".point");
         let linecurve = "";
         const reoute_fix = [];
-        points.forEach((item2, i) => {
+        points.forEach((item, i) => {
           if (i === 0 && points.length - 1 === 0) {
             var elemtsearchId_out = container.querySelector(
               `#${id}`
             );
-            var elemtsearch2 = item2;
-            var line_x2 = (elemtsearch2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var line_y2 = (elemtsearch2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
+            var elemtsearch = item;
+            var line_x = (elemtsearch.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
+            var line_y = (elemtsearch.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
             var elemtsearchIn = elemtsearchId_out.querySelectorAll(
-              "." + item2.parentElement.classList[4]
+              "." + item.parentElement.classList[4]
             )[0];
             var eX = elemtsearchIn.offsetWidth / 2 + (elemtsearchIn.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
             var eY = elemtsearchIn.offsetHeight / 2 + (elemtsearchIn.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-            var x2 = eX;
-            var y2 = eY;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature_start_end,
               "close"
             );
             linecurve += lineCurveSearch;
             reoute_fix.push(lineCurveSearch);
-            var elemtsearchId_out = item2;
-            var id_search2 = item2.parentElement.classList[2].replace(
+            var elemtsearchId_out = item;
+            var id_search = item.parentElement.classList[2].replace(
               "node_out_",
               ""
             );
-            var elemtsearchId2 = container.querySelector(
-              `#${id_search2}`
+            var elemtsearchId = container.querySelector(
+              `#${id_search}`
             );
-            var elemtsearch2 = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[3]
+            var elemtsearch = elemtsearchId.querySelectorAll(
+              "." + item.parentElement.classList[3]
             )[0];
-            var elemtsearchOut = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[3]
+            var elemtsearchOut = elemtsearchId.querySelectorAll(
+              "." + item.parentElement.classList[3]
             )[0];
-            var line_x2 = elemtsearchOut.offsetWidth / 2 + (elemtsearchOut.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-            var line_y2 = elemtsearchOut.offsetHeight / 2 + (elemtsearchOut.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
+            var line_x = elemtsearchOut.offsetWidth / 2 + (elemtsearchOut.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
+            var line_y = elemtsearchOut.offsetHeight / 2 + (elemtsearchOut.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
             var eX = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
             var eY = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var x2 = eX;
-            var y2 = eY;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature_start_end,
               "open"
             );
             linecurve += lineCurveSearch;
             reoute_fix.push(lineCurveSearch);
           } else if (i === 0) {
-            var elemtsearchId_out = item2;
-            var id_search2 = item2.parentElement.classList[2].replace(
+            var elemtsearchId_out = item;
+            var id_search = item.parentElement.classList[2].replace(
               "node_out_",
               ""
             );
-            var elemtsearchId2 = container.querySelector(
-              `#${id_search2}`
+            var elemtsearchId = container.querySelector(
+              `#${id_search}`
             );
-            var elemtsearch2 = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[3]
+            var elemtsearch = elemtsearchId.querySelectorAll(
+              "." + item.parentElement.classList[3]
             )[0];
-            var elemtsearchOut = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[3]
+            var elemtsearchOut = elemtsearchId.querySelectorAll(
+              "." + item.parentElement.classList[3]
             )[0];
-            var line_x2 = elemtsearchOut.offsetWidth / 2 + (elemtsearchOut.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
-            var line_y2 = elemtsearchOut.offsetHeight / 2 + (elemtsearchOut.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
+            var line_x = elemtsearchOut.offsetWidth / 2 + (elemtsearchOut.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
+            var line_y = elemtsearchOut.offsetHeight / 2 + (elemtsearchOut.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
             var eX = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
             var eY = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var x2 = eX;
-            var y2 = eY;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature_start_end,
               "open"
             );
             linecurve += lineCurveSearch;
             reoute_fix.push(lineCurveSearch);
-            var elemtsearchId_out = item2;
-            var elemtsearch2 = points[i + 1];
-            var eX = (elemtsearch2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var eY = (elemtsearch2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var line_x2 = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var line_y2 = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var x2 = eX;
-            var y2 = eY;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var elemtsearchId_out = item;
+            var elemtsearch = points[i + 1];
+            var eX = (elemtsearch.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
+            var eY = (elemtsearch.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
+            var line_x = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
+            var line_y = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature,
               "other"
             );
             linecurve += lineCurveSearch;
             reoute_fix.push(lineCurveSearch);
           } else if (i === points.length - 1) {
-            var elemtsearchId_out = item2;
-            var id_search2 = item2.parentElement.classList[1].replace(
+            var elemtsearchId_out = item;
+            var id_search = item.parentElement.classList[1].replace(
               "node_in_",
               ""
             );
-            var elemtsearchId2 = container.querySelector(
-              `#${id_search2}`
+            var elemtsearchId = container.querySelector(
+              `#${id_search}`
             );
-            var elemtsearch2 = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[4]
+            var elemtsearch = elemtsearchId.querySelectorAll(
+              "." + item.parentElement.classList[4]
             )[0];
-            var elemtsearchIn = elemtsearchId2.querySelectorAll(
-              "." + item2.parentElement.classList[4]
+            var elemtsearchIn = elemtsearchId.querySelectorAll(
+              "." + item.parentElement.classList[4]
             )[0];
             var eX = elemtsearchIn.offsetWidth / 2 + (elemtsearchIn.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom;
             var eY = elemtsearchIn.offsetHeight / 2 + (elemtsearchIn.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom;
-            var line_x2 = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var line_y2 = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var x2 = eX;
-            var y2 = eY;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var line_x = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
+            var line_y = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature_start_end,
               "close"
             );
             linecurve += lineCurveSearch;
             reoute_fix.push(lineCurveSearch);
           } else {
-            var elemtsearchId_out = item2;
-            var elemtsearch2 = points[i + 1];
-            var eX = (elemtsearch2.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var eY = (elemtsearch2.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var line_x2 = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
-            var line_y2 = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
-            var x2 = eX;
-            var y2 = eY;
-            var lineCurveSearch = createCurvature(
-              line_x2,
-              line_y2,
-              x2,
-              y2,
+            var elemtsearchId_out = item;
+            var elemtsearch = points[i + 1];
+            var eX = (elemtsearch.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
+            var eY = (elemtsearch.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
+            var line_x = (elemtsearchId_out.getBoundingClientRect().x - precanvas.getBoundingClientRect().x) * precanvasWitdhZoom + rerouteWidth;
+            var line_y = (elemtsearchId_out.getBoundingClientRect().y - precanvas.getBoundingClientRect().y) * precanvasHeightZoom + rerouteWidth;
+            var x = eX;
+            var y = eY;
+            var lineCurveSearch = this.createCurvature(
+              line_x,
+              line_y,
+              x,
+              y,
               reroute_curvature,
               "other"
             );
@@ -1109,13 +1187,13 @@ var Drawflow = class {
         });
         if (reroute_fix_curvature) {
           reoute_fix.forEach((itempath, i) => {
-            elems[item].children[i].setAttributeNS(null, "d", itempath);
+            el.children[i].setAttributeNS(null, "d", itempath);
           });
         } else {
-          elems[item].children[0].setAttributeNS(null, "d", linecurve);
+          el.children[0].setAttributeNS(null, "d", linecurve);
         }
       }
-    });
+    }
   }
   dblclick(e) {
     if (this.connection_selected != null && this.reroute) {
@@ -1253,200 +1331,52 @@ var Drawflow = class {
     });
     return nodes;
   }
-  addNode(name, num_in, num_out, ele_pos_x, ele_pos_y, classoverride, data, html2, typenode = false) {
-    if (typenode === true && !("html" in this.noderegister))
-      throw new RangeError(`node ${html2} not found!`);
-    if (this.useuuid) {
-      var newNodeId = this.getUuid();
-    } else {
-      var newNodeId = this.nodeId;
-    }
-    const parent = document.createElement("div");
-    parent.classList.add("parent-node");
-    const node = document.createElement("div");
-    node.innerHTML = "";
-    node.setAttribute("id", "node-" + newNodeId);
-    node.classList.add("drawflow-node");
-    if (classoverride != "") {
-      node.classList.add(...classoverride.split(" "));
-    }
-    const inputs = document.createElement("div");
-    inputs.classList.add("inputs");
-    const outputs = document.createElement("div");
-    outputs.classList.add("outputs");
-    const json_inputs = {};
-    for (var x = 0; x < num_in; x++) {
-      const input = document.createElement("div");
-      input.classList.add("input");
-      input.classList.add("input_" + (x + 1));
-      json_inputs["input_" + (x + 1)] = { connections: [] };
-      inputs.appendChild(input);
-    }
-    const json_outputs = {};
-    for (var x = 0; x < num_out; x++) {
-      const output = document.createElement("div");
-      output.classList.add("output");
-      output.classList.add("output_" + (x + 1));
-      json_outputs["output_" + (x + 1)] = { connections: [] };
-      outputs.appendChild(output);
-    }
-    const content = document.createElement("div");
-    content.classList.add("drawflow_content_node");
-    if (typenode === false) {
-      content.innerHTML = html2;
-    } else if (typenode === true) {
-      const { html: template } = this.noderegister[html2];
-      if (!(template instanceof Element))
-        throw new TypeError("html must be instace of Element");
-      const nodeTree = template instanceof HTMLTemplateElement ? template.content : template;
-      content.appendChild(nodeTree.cloneNode(true));
-    } else if (typenode === "vue" && this.render) {
-      if (parseInt(this.render.version) === 3) {
-        let wrapper = this.render.h(
-          this.noderegister[html2].html,
-          this.noderegister[html2].props,
-          this.noderegister[html2].options
-        );
-        wrapper.appContext = this.parent;
-        this.render.render(wrapper, content);
-      } else {
-        let wrapper = new this.render({
-          parent: this.parent,
-          render: (h) => h(this.noderegister[html2].html, {
-            props: this.noderegister[html2].props
-          }),
-          ...this.noderegister[html2].options
-        }).$mount();
-        content.appendChild(wrapper.$el);
-      }
-    }
-    Object.entries(data).forEach(function(key, value) {
-      if (typeof key[1] === "object") {
-        insertObjectkeys(null, key[0], key[0]);
-      } else {
-        var elems = content.querySelectorAll(
-          "[df-" + key[0] + "]"
-        );
-        for (var i = 0; i < elems.length; i++) {
-          elems[i].value = key[1];
-          if (elems[i].isContentEditable) {
-            elems[i].innerText = key[1];
-          }
-        }
-      }
-    });
-    function insertObjectkeys(object, name2, completname) {
-      if (object === null) {
-        var object = data[name2];
-      } else {
-        var object = object[name2];
-      }
-      if (object !== null) {
-        Object.entries(object).forEach(function(key, value) {
-          if (typeof key[1] === "object") {
-            insertObjectkeys(object, key[0], completname + "-" + key[0]);
-          } else {
-            var elems = content.querySelectorAll(
-              "[df-" + completname + "-" + key[0] + "]"
-            );
-            for (var i = 0; i < elems.length; i++) {
-              elems[i].value = key[1];
-              if (elems[i].isContentEditable) {
-                elems[i].innerText = key[1];
-              }
-            }
-          }
-        });
-      }
-    }
-    node.appendChild(inputs);
-    node.appendChild(content);
-    node.appendChild(outputs);
-    node.style.top = ele_pos_y + "px";
-    node.style.left = ele_pos_x + "px";
-    parent.appendChild(node);
-    this.precanvas.appendChild(parent);
-    var json = {
-      id: newNodeId,
-      name,
-      data,
-      class: classoverride,
-      html: html2,
-      typenode,
-      inputs: json_inputs,
-      outputs: json_outputs,
-      pos_x: ele_pos_x,
-      pos_y: ele_pos_y
-    };
-    this.drawflow.drawflow[this.module].data[newNodeId] = json;
-    this.dispatch("nodeCreated", newNodeId);
-    if (!this.useuuid) {
-      this.nodeId++;
-    }
-    return newNodeId;
-  }
-  addNodeImport(dataNode, precanvas) {
-    const parent = document.createElement("div");
-    parent.classList.add("parent-node");
-    const node = document.createElement("div");
-    node.innerHTML = "";
-    node.setAttribute("id", "node-" + dataNode.id);
-    node.classList.add("drawflow-node");
-    if (dataNode.class != "") {
-      node.classList.add(...dataNode.class.split(" "));
-    }
-    const inputs = document.createElement("div");
-    inputs.classList.add("inputs");
-    const outputs = document.createElement("div");
-    outputs.classList.add("outputs");
-    Object.keys(dataNode.inputs).map(function(input_item, index) {
-      const input = document.createElement("div");
-      input.classList.add("input");
-      input.classList.add(input_item);
-      inputs.appendChild(input);
-      Object.keys(dataNode.inputs[input_item].connections).map(function(output_item, index2) {
-        var connection = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "svg"
-        );
-        var path = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "path"
-        );
-        path.classList.add("main-path");
-        path.setAttributeNS(null, "d", "");
-        connection.classList.add("connection");
-        connection.classList.add("node_in_node-" + dataNode.id);
-        connection.classList.add(
-          "node_out_node-" + dataNode.inputs[input_item].connections[output_item].node
-        );
-        connection.classList.add(
-          dataNode.inputs[input_item].connections[output_item].input
-        );
-        connection.classList.add(input_item);
-        connection.appendChild(path);
-        precanvas.appendChild(connection);
-      });
-    });
-    for (var x = 0; x < Object.keys(dataNode.outputs).length; x++) {
-      const output = document.createElement("div");
-      output.classList.add("output");
-      output.classList.add("output_" + (x + 1));
-      outputs.appendChild(output);
-    }
-    const content = document.createElement("div");
-    content.classList.add("drawflow_content_node");
+  renderNodeFirstTime(dataNode, precanvas) {
+    const template = html`
+      <div class="parent-node">
+        <div
+          id="node-${dataNode.id}"
+          class="drawflow-node ${dataNode.class || ""}"
+          style="
+          --top: ${dataNode.pos_y}px;
+          --left: ${dataNode.pos_x}px;
+          top: calc(var(--top, 0px) + var(--y, 0px));
+          left: calc(var(--left, 0px) + var(--x, 0px));
+        "
+        >
+          <div class="inputs">
+            ${Object.keys(dataNode.inputs).map(
+      (input_item) => html` <div class="input ${input_item}"></div> `
+    ).join("")}
+          </div>
+          <div class="drawflow_content_node"></div>
+          <div class="outputs">
+            ${Object.keys(dataNode.outputs).map(
+      (output_item) => html` <div class="output ${output_item}"></div> `
+    ).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+    const parent = htmlToTemplate(template).content.cloneNode(
+      true
+    );
+    const content = parent.querySelector(
+      `#node-${dataNode.id} .drawflow_content_node`
+    );
     if (dataNode.typenode === false) {
       content.innerHTML = dataNode.html;
     } else if (dataNode.typenode === true) {
-      const { html: template } = this.noderegister[dataNode.html];
-      if (!(template instanceof Element))
+      const { html: template2 } = this.noderegister[dataNode.html];
+      if (!(template2 instanceof Element))
         throw new TypeError("html must be instace of Element");
-      const nodeTree = template instanceof HTMLTemplateElement ? template.content : template;
+      const nodeTree = template2 instanceof HTMLTemplateElement ? template2.content : template2;
       content.appendChild(nodeTree.cloneNode(true));
-    } else if (dataNode.typenode === "vue") {
+    }
+    precanvas.appendChild(parent);
+    if (dataNode.typenode === "vue") {
       if (parseInt(this.render.version) === 3) {
-        let wrapper = this.render.h(
+        const wrapper = this.render.h(
           this.noderegister[dataNode.html].html,
           this.noderegister[dataNode.html].props,
           this.noderegister[dataNode.html].options
@@ -1454,7 +1384,7 @@ var Drawflow = class {
         wrapper.appContext = this.parent;
         this.render.render(wrapper, content);
       } else {
-        let wrapper = new this.render({
+        const wrapper = new this.render({
           parent: this.parent,
           render: (h) => h(this.noderegister[dataNode.html].html, {
             props: this.noderegister[dataNode.html].props
@@ -1464,52 +1394,55 @@ var Drawflow = class {
         content.appendChild(wrapper.$el);
       }
     }
-    Object.entries(dataNode.data).forEach(function(key, value) {
-      if (typeof key[1] === "object") {
-        insertObjectkeys(null, key[0], key[0]);
-      } else {
-        var elems = content.querySelectorAll(
-          "[df-" + key[0] + "]"
-        );
-        for (var i = 0; i < elems.length; i++) {
-          elems[i].value = key[1];
-          if (elems[i].isContentEditable) {
-            elems[i].innerText = key[1];
-          }
-        }
+  }
+  addNode(...args) {
+    const newNodeId = this.useuuid ? this.getUuid() : this.nodeId++;
+    let json;
+    if (((s) => s.length === 1)(args)) {
+      json = { ...args[0], id: newNodeId };
+    } else {
+      const [
+        name,
+        num_in,
+        num_out,
+        ele_pos_x,
+        ele_pos_y,
+        classoverride,
+        data,
+        html2,
+        typenode = false
+      ] = args;
+      if (typenode === true && !(html2 in this.noderegister))
+        throw new RangeError(`node ${html2} not found!`);
+      const json_inputs = {};
+      for (let x = 0; x < num_in; x++) {
+        json_inputs[`input_${x + 1}`] = { connections: [] };
       }
-    });
-    function insertObjectkeys(object, name, completname) {
-      if (object === null) {
-        var object = dataNode.data[name];
-      } else {
-        var object = object[name];
+      const json_outputs = {};
+      for (let x = 0; x < num_out; x++) {
+        json_outputs[`output_${x + 1}`] = { connections: [] };
       }
-      if (object !== null) {
-        Object.entries(object).forEach(function(key, value) {
-          if (typeof key[1] === "object") {
-            insertObjectkeys(object, key[0], completname + "-" + key[0]);
-          } else {
-            var elems = content.querySelectorAll(
-              "[df-" + completname + "-" + key[0] + "]"
-            );
-            for (var i = 0; i < elems.length; i++) {
-              elems[i].value = key[1];
-              if (elems[i].isContentEditable) {
-                elems[i].innerText = key[1];
-              }
-            }
-          }
-        });
-      }
+      json = {
+        id: newNodeId,
+        name,
+        data,
+        class: classoverride,
+        html: html2,
+        typenode,
+        inputs: json_inputs,
+        outputs: json_outputs,
+        pos_x: ele_pos_x,
+        pos_y: ele_pos_y
+      };
     }
-    node.appendChild(inputs);
-    node.appendChild(content);
-    node.appendChild(outputs);
-    node.style.top = dataNode.pos_y + "px";
-    node.style.left = dataNode.pos_x + "px";
-    parent.appendChild(node);
-    this.precanvas.appendChild(parent);
+    if (this.precanvas)
+      this.renderNodeFirstTime(json, this.precanvas);
+    this.drawflow.drawflow[this.module].data[newNodeId] = json;
+    this.dispatch("nodeCreated", newNodeId);
+    return newNodeId;
+  }
+  addNodeImport(dataNode, precanvas) {
+    this.renderNodeFirstTime(dataNode, precanvas);
   }
   addRerouteImport(dataNode) {
     const reroute_width = this.reroute_width;
@@ -1926,14 +1859,14 @@ var Drawflow = class {
   }
   getModuleFromNodeId(id) {
     let nameModule = "";
-    const editor = this.drawflow.drawflow;
-    Object.keys(editor).map((moduleName) => {
-      Object.keys(editor[moduleName].data).map((node) => {
-        if (node == id) {
-          nameModule = moduleName;
-        }
-      });
-    });
+    for (const [moduleName, { data }] of Object.entries(
+      this.drawflow.drawflow
+    )) {
+      if (Object.hasOwn(data, id.toString())) {
+        nameModule = moduleName;
+        break;
+      }
+    }
     return nameModule;
   }
   addModule(name) {
@@ -2021,19 +1954,17 @@ var Drawflow = class {
     });
   }
   getUuid() {
-    var s = [];
-    var hexDigits = "0123456789abcdef";
-    for (var i = 0; i < 36; i++) {
-      s[i] = hexDigits.substr(Math.floor(Math.random() * 16), 1);
-    }
-    s[14] = "4";
-    s[19] = hexDigits.substr(s[19] & 3 | 8, 1);
-    s[8] = s[13] = s[18] = s[23] = "-";
-    var uuid = s.join("");
-    return uuid;
+    return v4_default();
+  }
+  getElementOfNode(nodeId) {
+    var _a, _b;
+    return (_b = (_a = this.precanvas) == null ? void 0 : _a.querySelector(`#node-${nodeId}`)) != null ? _b : null;
   }
 };
+_editor_mode = new WeakMap();
 export {
-  Drawflow
+  Drawflow,
+  html,
+  htmlToTemplate
 };
 //# sourceMappingURL=drawflow.js.map

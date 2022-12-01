@@ -1,15 +1,23 @@
 import IDrawflow, { ConnectionEvent, ConnectionStartEvent, DrawFlowEditorMode, DrawflowExport, DrawflowNode, MousePositionEvent } from './types';
 export * from './types';
+export declare const htmlToTemplate: (_template: string) => HTMLTemplateElement;
+export declare const html: (strings: TemplateStringsArray, ...values: any[]) => string;
 export declare class Drawflow implements IDrawflow {
     private readonly container;
     private readonly render?;
     private readonly parent?;
     private events;
     private nodeId;
-    private precanvas;
+    protected precanvas: HTMLElement | null;
     private ele_selected;
-    private node_selected;
+    protected node_selected: HTMLElement | null;
     private drag;
+    private _canvasX;
+    get canvasX(): number;
+    set canvasX(val: number);
+    private _canvasY;
+    get canvasY(): number;
+    set canvasY(val: number);
     /**
      * Active reroute
      * @default false
@@ -44,7 +52,7 @@ export declare class Drawflow implements IDrawflow {
     private editor_selected;
     private connection;
     private connection_ele;
-    private connection_selected;
+    protected connection_selected: HTMLElement | SVGElement | null;
     /**
      * Canvas origin x coordinate
      */
@@ -124,10 +132,11 @@ export declare class Drawflow implements IDrawflow {
     load(): void;
     private removeReouteConnectionSelected;
     private click;
+    updateNodePosition(id: DrawflowNode['id'], x: number, y: number, module?: string): void;
     private position;
     private dragEnd;
     protected contextmenu(e: GlobalEventHandlersEventMap['contextmenu']): boolean | void;
-    private contextmenuDel;
+    protected contextmenuDel(): void;
     private key;
     private zoom_enter;
     /**
@@ -156,7 +165,7 @@ export declare class Drawflow implements IDrawflow {
      * @param outputName
      * @param inputName
      */
-    addConnection(id_output: string | number, id_input: string | number, output_class: string, input_class: string): void;
+    addConnection(id_output: string | number, id_input: string | number, output_class: string, input_class: string, connection_class?: string): void;
     /**
      * Update connections position from Node Ex id: node-x
      * @param id
@@ -182,8 +191,12 @@ export declare class Drawflow implements IDrawflow {
      *  Return Array of nodes id. Ex: name: telegram
      */
     getNodesFromName(name: string): DrawflowNode['id'][];
+    protected renderNodeFirstTime(dataNode: DrawflowNode, precanvas: HTMLElement): void;
     /**
-     *
+     * @param nodeData - DrawflowNode object
+     */
+    addNode(nodeData: Omit<DrawflowNode, 'id'>): DrawflowNode['id'];
+    /**
      * @param name Name of module
      * @param inputs Number of inputs
      * @param outputs Number of outputs
@@ -194,7 +207,7 @@ export declare class Drawflow implements IDrawflow {
      * @param html HTML drawn on node or name of register node.
      * @param typenode Default false, true for Object HTML, vue for vue
      */
-    addNode(name: DrawflowNode['name'], num_in: number, num_out: number, ele_pos_x: number, ele_pos_y: number, classoverride: string, data: any, html: string, typenode?: DrawflowNode['typenode']): DrawflowNode['id'];
+    addNode(name: DrawflowNode['name'], num_in: number, num_out: number, ele_pos_x: number, ele_pos_y: number, classoverride: string, data: any, html: string, typenode: DrawflowNode['typenode']): DrawflowNode['id'];
     private addNodeImport;
     private addRerouteImport;
     private updateNodeValue;
@@ -420,4 +433,5 @@ export declare class Drawflow implements IDrawflow {
     removeListener(event: string, callback: any): boolean | void;
     private dispatch;
     getUuid(): string;
+    getElementOfNode(nodeId: DrawflowNode['id']): HTMLElement | null;
 }

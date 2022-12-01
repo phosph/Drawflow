@@ -11,6 +11,9 @@
   position: relative;
   user-select: none;
   perspective: 0;
+  transform:
+   /* translate( var(--x, 0px), var(--y, opx) )  */
+  scale( var(--scale, 1) );
 }
 
 .drawflow .parent-node {
@@ -35,7 +38,7 @@
 .drawflow .drawflow-node.selected {
   background: red;
 }
-.drawflow .drawflow-node:hover {
+.drawflow[data-mode=edit] .drawflow-node:hover {
   cursor: move;
 }
 
@@ -89,6 +92,8 @@
 }
 .drawflow .connection .main-path:hover {
   stroke: #1266ab;
+}
+.drawflow[data-mode=edit] .connection .main-path:hover {
   cursor: pointer;
 }
 
@@ -96,8 +101,10 @@
   stroke: #43b993;
 }
 
-.drawflow .connection .point {
+.drawflow[data-mode=edit] .connection .point {
   cursor: move;
+}
+.drawflow .connection .point {
   stroke: black;
   stroke-width: 2;
   fill: white;

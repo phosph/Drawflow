@@ -409,7 +409,7 @@ export interface DrawflowModuleData {
 }
 export interface DrawflowNode {
     class: string;
-    data: any;
+    data: Record<string, unknown>;
     html: string;
     id: number | string;
     inputs: Record<string, DrawflowConnection>;
@@ -430,6 +430,7 @@ export interface DrawflowConnectionDetail {
         pos_x: number;
         pos_y: number;
     }[];
+    pathClass?: string;
 }
 export declare type DrawFlowEditorMode = 'edit' | 'fixed' | 'view';
 export interface Vue {

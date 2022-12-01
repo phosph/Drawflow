@@ -517,7 +517,7 @@ export interface DrawflowModuleData {
 
 export interface DrawflowNode {
   class: string;
-  data: any;
+  data: Record<string, unknown>;
   html: string;
   id: number | string;
   inputs: Record<string, DrawflowConnection>;
@@ -537,14 +537,14 @@ export interface DrawflowConnectionDetail {
   node: string;
   output?: string;
   points?: { pos_x: number; pos_y: number }[];
+  pathClass?: string;
 }
 
 export type DrawFlowEditorMode = 'edit' | 'fixed' | 'view';
 
-
 export interface Vue {
-    version: string,
-    h(...args: any): any;
-    new (...args: any[]): any
-    render(...args: any[]): any
-  }
+  version: string;
+  h(...args: any): any;
+  new (...args: any[]): any;
+  render(...args: any[]): any;
+}
