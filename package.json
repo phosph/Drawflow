@@ -8,9 +8,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:js && npm run build:types",
+    "build": "npm run build:js && npm run build:css && npm run build:types",
     "build:js": "node ./scripts/build.js",
-    "build:types": "rm dist/*.ts && tsc --emitDeclarationOnly -p ./tsconfig.build.json",
+    "build:types": "tsc --emitDeclarationOnly -p ./tsconfig.build.json",
+    "build:css": "cp src/drawflow.css dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -40,7 +41,10 @@
   "homepage": "https://github.com/phophs/Drawflow#readme",
   "devDependencies": {
     "@types/uuid": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
     "esbuild": "^0.15.13",
+    "eslint": "^8.28.0",
     "gulp": "^4.0.2",
     "gulp-concat": "^2.6.1",
     "gulp-minify-css": "^1.2.4",

@@ -5,3 +5,9 @@ index.html
 test.html
 gulpfile.js
 webpack.config.js
+scripts/
+.nvmrc
+.vscode/
+.github/
+.eslintrc.*
+tsconfig.*
