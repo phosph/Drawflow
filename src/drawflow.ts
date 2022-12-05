@@ -247,6 +247,7 @@ export class Drawflow {
     this.container.addEventListener('mouseup', this.dragEnd.bind(this));
     this.container.addEventListener('mousemove', this.position.bind(this));
     this.container.addEventListener('mousedown', this.click.bind(this));
+    this.container.addEventListener('blur', this.blur.bind(this));
 
     this.container.addEventListener('touchend', this.dragEnd.bind(this));
     this.container.addEventListener('touchmove', this.position.bind(this));
@@ -843,6 +844,14 @@ export class Drawflow {
     this.editor_selected = false;
 
     this.dispatch('mouseUp', e);
+  }
+
+  protected blur() {
+      this.drag = false;
+      this.drag_point = false;
+      this.connection = false;
+      this.ele_selected = null;
+      this.editor_selected = false;
   }
 
   protected contextmenu(
