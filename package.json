@@ -13,7 +13,7 @@
     "build:types": "tsc --emitDeclarationOnly -p ./tsconfig.build.json",
     "build:css": "cp src/drawflow.css dist/",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublishOnly": "npm build"
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
