@@ -10,7 +10,7 @@ await esbuild.build({
   sourcemap: 'linked',
   format: 'esm',
   bundle: true,
-  tsconfig: fileURLToPath(new URL('../tsconfig.json', import.meta.url)),
+  tsconfig: fileURLToPath(new URL('../tsconfig.build.json', import.meta.url)),
   outdir: 'dist/',
   entryPoints: [fileURLToPath(new URL('../src/drawflow.ts', import.meta.url))],
 });

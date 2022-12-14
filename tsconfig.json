@@ -1,4 +1,5 @@
 {
+  "compileOnSave": false,
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "outDir": "dist",
@@ -16,6 +17,8 @@
     "forceConsistentCasingInFileNames": true,
     "downlevelIteration": true,
     "target": "es2019",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false
   },
-  "exclude": ["node_modules/*"]
+  "exclude": ["node_modules/*", "dist/*"]
 }
