@@ -2,7 +2,7 @@
   display: flex;
   overflow: hidden;
   touch-action: none;
-  outline:none;
+  outline: none;
 }
 
 .drawflow {
@@ -11,14 +11,20 @@
   position: relative;
   user-select: none;
   perspective: 0;
-  transform:
-  translate( var(--x, 0px), var(--y, opx) ) 
-  scale( var(--scale, 1) );
+  transform: translate(var(--x, 0px), var(--y, opx)) scale(var(--scale, 1));
+}
+
+.drawflow[data-mode='edit']:hover,
+.drawflow[data-mode='fixed']:hover {
+  cursor: grab;
+}
+.drawflow[data-mode='edit']:active,
+.drawflow[data-mode='fixed']:active {
+  cursor: grabbing;
 }
 
 .drawflow .parent-node {
   position: relative;
-
 }
 
 .drawflow .drawflow-node {
@@ -28,21 +34,26 @@
   background: cyan;
   width: 160px;
   min-height: 40px;
-  border-radius:4px;
+  border-radius: 4px;
   border: 2px solid black;
   color: black;
   z-index: 2;
   padding: 15px;
+  cursor: default;
+
+  top: var(--top, 0px);
+  left: var(--left, 0px);
 }
 
 .drawflow .drawflow-node.selected {
   background: red;
 }
-.drawflow[data-mode=edit] .drawflow-node:hover {
+.drawflow[data-mode='edit']:not(.nodes-node-dragables) .drawflow-node:hover {
   cursor: move;
 }
 
-.drawflow .drawflow-node .inputs, .drawflow .drawflow-node .outputs {
+.drawflow .drawflow-node .inputs,
+.drawflow .drawflow-node .outputs {
   width: 0px;
 }
 
@@ -51,8 +62,8 @@
   display: block;
 }
 
-.drawflow .drawflow-node .input, .drawflow .drawflow-node .output {
-
+.drawflow .drawflow-node .input,
+.drawflow .drawflow-node .output {
   position: relative;
   width: 20px;
   height: 20px;
@@ -86,14 +97,14 @@
 }
 .drawflow .connection .main-path {
   fill: none;
-  stroke-width: 5px;
+  stroke-width: var(--stroke-width, 5px);
   stroke: steelblue;
   pointer-events: all;
 }
 .drawflow .connection .main-path:hover {
   stroke: #1266ab;
 }
-.drawflow[data-mode=edit] .connection .main-path:hover {
+.drawflow[data-mode='edit'] .connection .main-path:hover {
   cursor: pointer;
 }
 
@@ -101,7 +112,7 @@
   stroke: #43b993;
 }
 
-.drawflow[data-mode=edit] .connection .point {
+.drawflow[data-mode='edit'] .connection .point {
   cursor: move;
 }
 .drawflow .connection .point {
@@ -111,7 +122,8 @@
   pointer-events: all;
 }
 
-.drawflow .connection .point.selected, .drawflow .connection .point:hover {
+.drawflow .connection .point.selected,
+.drawflow .connection .point:hover {
   fill: #1266ab;
 }
 
@@ -121,7 +133,7 @@
   stroke: steelblue;
 }
 
-.drawflow-delete {
+/* .drawflow-delete {
   position: absolute;
   display: block;
   width: 30px;
@@ -140,9 +152,13 @@
 .drawflow > .drawflow-delete {
   margin-left: -15px;
   margin-top: 15px;
+} */
+.drawflow > df-node-remove-button {
+  margin-left: -15px;
+  margin-top: 15px;
 }
 
-.parent-node .drawflow-delete {
+.parent-node df-node-remove-button {
   right: -15px;
   top: -15px;
 }
