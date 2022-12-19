@@ -1276,29 +1276,26 @@ export class Drawflow extends EventTarget {
     for (const el of this.container.querySelectorAll<SVGElement>(
       `.${idSearchOut}`
     )) {
-      if (el.querySelector('.point') === null) {
-        const id_search = el.dataset.node_in;
-        if (!id_search) return;
+      const points = el.querySelectorAll<HTMLElement>('.point');
 
+      if (!points.length) {
         const elStart = this.container.querySelector<HTMLElement>(
           `#${id} .${el.classList[3]}`
         );
 
-        if (!elStart) return;
-
         const elEnd = this.container.querySelector<HTMLElement>(
-          `#${id_search} .${el.classList[4]}`
+          `#${el.dataset.node_in} .${el.classList[4]}`
         );
 
-        if (!elEnd) return;
+        if (!elStart || !elEnd) return;
 
-        const { x: elStartX, y: elStartY } = elEnd.getBoundingClientRect();
-        const { x: elEndX, y: elEndY } = elStart.getBoundingClientRect();
+        const { x: elEndX, y: elEndY } = elEnd.getBoundingClientRect();
+        const { x: elStartX, y: elStartY } = elStart.getBoundingClientRect();
 
-        const endX = elEnd.offsetWidth / 2 + (elStartX - pcX) / zoom;
-        const endY = elEnd.offsetHeight / 2 + (elStartY - pcY) / zoom;
-        const startX = elStart.offsetWidth / 2 + (elEndX - pcX) / zoom;
-        const startY = elStart.offsetHeight / 2 + (elEndY - pcY) / zoom;
+        const startX = elStart.offsetWidth / 2 + (elStartX - pcX) / zoom;
+        const startY = elStart.offsetHeight / 2 + (elStartY - pcY) / zoom;
+        const endX = elEnd.offsetWidth / 2 + (elEndX - pcX) / zoom;
+        const endY = elEnd.offsetHeight / 2 + (elEndY - pcY) / zoom;
 
         const lineCurve = createCurvature(
           startX,
@@ -1310,184 +1307,87 @@ export class Drawflow extends EventTarget {
         );
         (el.children[0] as SVGPathElement).setAttributeNS(null, 'd', lineCurve);
       } else {
-        const points = el.querySelectorAll('.point') as NodeListOf<HTMLElement>;
-
         const reoute_fix: string[] = [];
+        for (let i = 0; i < points.length; i++) {
+          const item = points[i];
 
-        points.forEach((item, i) => {
           const { x: elX, y: elY } = item.getBoundingClientRect();
-          if (i === 0 && points.length - 1 === 0) {
-            {
-              const eX = (elX - pcX) / zoom + rerouteWidth;
-              const eY = (elY - pcY) / zoom + rerouteWidth;
+          const start_x = (elX - pcX) / zoom + rerouteWidth;
+          const start_y = (elY - pcY) / zoom + rerouteWidth;
 
-              const elemtsearchOut = this.container.querySelector<HTMLElement>(
-                `#${id} .${item.parentElement!.classList[3]}`
-              )!;
+          if (i === 0) {
+            const elemtsearchOut = this.container.querySelector<HTMLElement>(
+              `#${id} .${item.parentElement!.classList[3]}`
+            )!;
 
-              const { x: elSearchOutX, y: elSearchOutY } =
-                elemtsearchOut.getBoundingClientRect();
+            const { x: elSearchOutX, y: elSearchOutY } =
+              elemtsearchOut.getBoundingClientRect();
 
-              const line_x =
-                elemtsearchOut.offsetWidth / 2 + (elSearchOutX - pcX) / zoom;
+            const init_x =
+              (elSearchOutX - pcX) / zoom + elemtsearchOut.offsetWidth / 2;
+            const init_y =
+              (elSearchOutY - pcY) / zoom + elemtsearchOut.offsetHeight / 2;
 
-              const line_y =
-                elemtsearchOut.offsetHeight / 2 + (elSearchOutY - pcY) / zoom;
+            const lineCurve1 = createCurvature(
+              init_x,
+              init_y,
+              start_x,
+              start_y,
+              reroute_curvature_start_end,
+              'open'
+            );
 
-              const lineCurveSearch = createCurvature(
-                line_x,
-                line_y,
-                eX,
-                eY,
-                reroute_curvature_start_end,
-                'open'
-              );
+            reoute_fix.push(lineCurve1);
+          }
 
-              reoute_fix.push(lineCurveSearch);
-            }
-            {
-              const id_search = item.parentElement!.classList[1].replace(
-                'node_in_',
-                ''
-              );
+          let endCurveType: 'close' | 'other';
+          let end_x: number;
+          let end_y: number;
 
-              const elemtsearchIn = this.container.querySelector<HTMLElement>(
-                `#${id_search} .${item.parentElement!.classList[4]}`
-              )!;
-
-              const { x: elSearchX, y: elSearchY } =
-                elemtsearchIn.getBoundingClientRect();
-
-              const eX =
-                elemtsearchIn.offsetWidth / 2 + (elSearchX - pcX) / zoom;
-
-              const eY =
-                elemtsearchIn.offsetHeight / 2 + (elSearchY - pcY) / zoom;
-
-              const line_x = (elX - pcX) / zoom + rerouteWidth;
-              const line_y = (elY - pcY) / zoom + rerouteWidth;
-
-              const lineCurveSearch = createCurvature(
-                line_x,
-                line_y,
-                eX,
-                eY,
-                reroute_curvature_start_end,
-                'close'
-              );
-
-              reoute_fix.push(lineCurveSearch);
-            }
-          } else if (i === 0) {
-            {
-              const elemtsearchOut = this.container.querySelector<HTMLElement>(
-                `#${id} .${item.parentElement!.classList[3]}`
-              )!;
-
-              const { x: elSearchX, y: elSearchY } =
-                elemtsearchOut.getBoundingClientRect();
-
-              const eX = (elX - pcX) / zoom + rerouteWidth;
-              const eY = (elY - pcY) / zoom + rerouteWidth;
-
-              const line_x =
-                elemtsearchOut.offsetWidth / 2 + (elSearchX - pcX) / zoom;
-              const line_y =
-                elemtsearchOut.offsetHeight / 2 + (elSearchY - pcY) / zoom;
-
-              const lineCurveSearch = createCurvature(
-                line_x,
-                line_y,
-                eX,
-                eY,
-                reroute_curvature_start_end,
-                'open'
-              );
-              reoute_fix.push(lineCurveSearch);
-            }
-            {
-              // SECOND
-              const elemtsearch = points[i + 1];
-
-              const { x: elSearchX, y: elSearchY } =
-                elemtsearch.getBoundingClientRect();
-
-              const eX = (elSearchX - pcX) / zoom + rerouteWidth;
-              const eY = (elSearchY - pcY) / zoom + rerouteWidth;
-
-              const line_x = (elX - pcX) / zoom + rerouteWidth;
-              const line_y = (elY - pcY) / zoom + rerouteWidth;
-
-              const lineCurveSearch = createCurvature(
-                line_x,
-                line_y,
-                eX,
-                eY,
-                reroute_curvature,
-                'other'
-              );
-              reoute_fix.push(lineCurveSearch);
-            }
-          } else if (i === points.length - 1) {
+          if (i === points.length - 1) {
             const id_search = item.parentElement!.classList[1].replace(
               'node_in_',
               ''
             );
-            const elemtsearchIn = this.container.querySelector<HTMLElement>(
+            const elemtsearch = this.container.querySelector<HTMLElement>(
               `#${id_search} .${item.parentElement!.classList[4]}`
             )!;
 
-            const eX =
-              elemtsearchIn.offsetWidth / 2 +
-              (elemtsearchIn.getBoundingClientRect().x - pcX) / zoom;
+            const { x: elSearchX, y: elSearchY } =
+              elemtsearch.getBoundingClientRect();
 
-            const eY =
-              elemtsearchIn.offsetHeight / 2 +
-              (elemtsearchIn.getBoundingClientRect().y - pcY) / zoom;
-
-            const line_x = (elX - pcX) / zoom + rerouteWidth;
-            const line_y = (elY - pcY) / zoom + rerouteWidth;
-
-            const lineCurveSearch = createCurvature(
-              line_x,
-              line_y,
-              eX,
-              eY,
-              reroute_curvature_start_end,
-              'close'
-            );
-
-            reoute_fix.push(lineCurveSearch);
+            end_x = (elSearchX - pcX) / zoom + elemtsearch.offsetWidth / 2;
+            end_y = (elSearchY - pcY) / zoom + elemtsearch.offsetHeight / 2;
+            endCurveType = 'close';
           } else {
             const elemtsearch = points[i + 1];
 
             const { x: elSearchX, y: elSearchY } =
               elemtsearch.getBoundingClientRect();
 
-            const eX = (elSearchX - pcX) / zoom + rerouteWidth;
-            const eY = (elSearchY - pcY) / zoom + rerouteWidth;
-
-            const line_x = (elX - pcX) / zoom + rerouteWidth;
-            const line_y = (elY - pcY) / zoom + rerouteWidth;
-
-            const lineCurveSearch = createCurvature(
-              line_x,
-              line_y,
-              eX,
-              eY,
-              reroute_curvature,
-              'other'
-            );
-            reoute_fix.push(lineCurveSearch);
+            end_x = (elSearchX - pcX) / zoom + rerouteWidth;
+            end_y = (elSearchY - pcY) / zoom + rerouteWidth;
+            endCurveType = 'other';
           }
-        });
+
+          const lineCurveSearch = createCurvature(
+            start_x,
+            start_y,
+            end_x,
+            end_y,
+            reroute_curvature_start_end,
+            endCurveType
+          );
+
+          reoute_fix.push(lineCurveSearch);
+        }
 
         if (reroute_fix_curvature) {
           reoute_fix.forEach((itempath, i) => {
             el.children[i].setAttributeNS(null, 'd', itempath);
           });
         } else {
-          const linecurve = reoute_fix.join('');
+          const linecurve = reoute_fix.join(' ');
           el.children[0].setAttributeNS(null, 'd', linecurve);
         }
       }
@@ -1497,224 +1397,113 @@ export class Drawflow extends EventTarget {
     for (const el of this.container.querySelectorAll<SVGElement>(
       `.${idSearchIn}`
     )) {
-      if (el.querySelector('.point') === null) {
-        const elemtsearch = this.container.querySelector<HTMLElement>(
+      const points = el.querySelectorAll<HTMLElement>('.point');
+
+      if (!points.length) {
+        const elStart = this.container.querySelector<HTMLElement>(
           `#${el.dataset.node_out} .${el.classList[3]}`
-        )!;
+        );
 
-        const { x: elX, y: elY } = elemtsearch.getBoundingClientRect();
-
-        const line_x = elemtsearch.offsetWidth / 2 + (elX - pcX) / zoom;
-        const line_y = elemtsearch.offsetHeight / 2 + (elY - pcY) / zoom;
-
-        const elemtsearchId_in = this.container.querySelector<HTMLElement>(
+        const elEnd = this.container.querySelector<HTMLElement>(
           `#${id} .${el.classList[4]}`
-        )!;
+        );
 
-        const x =
-          elemtsearchId_in.offsetWidth / 2 +
-          (elemtsearchId_in.getBoundingClientRect().x - pcX) / zoom;
-        const y =
-          elemtsearchId_in.offsetHeight / 2 +
-          (elemtsearchId_in.getBoundingClientRect().y - pcY) / zoom;
+        if (!elStart || !elEnd) return;
+
+        const { x: elStartX, y: elStartY } = elStart.getBoundingClientRect();
+        const { x: elEndX, y: elEndY } = elEnd.getBoundingClientRect();
+
+        const startX = elStart.offsetWidth / 2 + (elStartX - pcX) / zoom;
+        const startY = elStart.offsetHeight / 2 + (elStartY - pcY) / zoom;
+        const endX = elEnd.offsetWidth / 2 + (elEndX - pcX) / zoom;
+        const endY = elEnd.offsetHeight / 2 + (elEndY - pcY) / zoom;
 
         const lineCurve = createCurvature(
-          line_x,
-          line_y,
-          x,
-          y,
+          startX,
+          startY,
+          endX,
+          endY,
           curvature,
           'openclose'
         );
-        el.children[0].setAttributeNS(null, 'd', lineCurve);
+        (el.children[0] as SVGPathElement).setAttributeNS(null, 'd', lineCurve);
       } else {
-        const points = el.querySelectorAll<HTMLElement>('.point');
-
         const reoute_fix: string[] = [];
-        points.forEach((item, i) => {
+        for (let i = 0; i < points.length; i++) {
+          const item = points[i];
           const { x: elX, y: elY } = item.getBoundingClientRect();
+          const start_x = (elX - pcX) / zoom + rerouteWidth;
+          const start_y = (elY - pcY) / zoom + rerouteWidth;
 
-          if (i === 0 && points.length - 1 === 0) {
-            {
-              const line_x = (elX - pcX) / zoom + rerouteWidth;
-              const line_y = (elY - pcY) / zoom + rerouteWidth;
+          if (i === 0) {
+            const { node_out: nodeOrigin, outputFrom: slotOriginName } =
+              item.parentElement!.dataset;
 
-              const elemtsearchIn = this.container.querySelector<HTMLElement>(
-                `#${id} .${item.parentElement!.classList[4]}`
-              )!;
-
-              const { x: elSearchX, y: elSearchY } =
-                elemtsearchIn.getBoundingClientRect();
-
-              const eX =
-                elemtsearchIn.offsetWidth / 2 + (elSearchX - pcX) / zoom;
-
-              const eY =
-                elemtsearchIn.offsetHeight / 2 + (elSearchY - pcY) / zoom;
-
-              const lineCurveSearch = createCurvature(
-                line_x,
-                line_y,
-                eX,
-                eY,
-                reroute_curvature_start_end,
-                'close'
-              );
-
-              reoute_fix.push(lineCurveSearch);
-            }
-            {
-              const id_search = item.parentElement!.classList[2].replace(
-                'node_out_',
-                ''
-              );
-
-              const elemtsearchOut = this.container.querySelector<HTMLElement>(
-                `#${id_search} .${item.parentElement!.classList[3]}`
-              )!;
-
-              const { x: elSearchX, y: elSearchY } =
-                elemtsearchOut.getBoundingClientRect();
-
-              const line_x =
-                elemtsearchOut.offsetWidth / 2 + (elSearchX - pcX) / zoom;
-              const line_y =
-                elemtsearchOut.offsetHeight / 2 + (elSearchY - pcY) / zoom;
-
-              const eX = (elX - pcX) / zoom + rerouteWidth;
-              const eY = (elY - pcY) / zoom + rerouteWidth;
-
-              const lineCurveSearch = createCurvature(
-                line_x,
-                line_y,
-                eX,
-                eY,
-                reroute_curvature_start_end,
-                'open'
-              );
-
-              reoute_fix.push(lineCurveSearch);
-            }
-          } else if (i === 0) {
-            {
-              // FIRST
-
-              const id_search = item.parentElement!.classList[2].replace(
-                'node_out_',
-                ''
-              );
-
-              const elemtsearchOut = this.container.querySelector<HTMLElement>(
-                `#${id_search} .${item.parentElement!.classList[3]}`
-              )!;
-
-              const { x: elSearchX, y: elSearchY } =
-                elemtsearchOut.getBoundingClientRect();
-
-              const line_x =
-                elemtsearchOut.offsetWidth / 2 + (elSearchX - pcX) / zoom;
-              const line_y =
-                elemtsearchOut.offsetHeight / 2 + (elSearchY - pcY) / zoom;
-
-              const eX = (elX - pcX) / zoom + rerouteWidth;
-              const eY = (elY - pcY) / zoom + rerouteWidth;
-
-              const lineCurveSearch = createCurvature(
-                line_x,
-                line_y,
-                eX,
-                eY,
-                reroute_curvature_start_end,
-                'open'
-              );
-
-              reoute_fix.push(lineCurveSearch);
-            }
-            {
-              // SECOND
-
-              const elemtsearch = points[i + 1];
-
-              const { x: elSearchX, y: elSearchY } =
-                elemtsearch.getBoundingClientRect();
-
-              const eX = (elSearchX - pcX) / zoom + rerouteWidth;
-              const eY = (elSearchY - pcY) / zoom + rerouteWidth;
-
-              const line_x = (elX - pcX) / zoom + rerouteWidth;
-              const line_y = (elY - pcY) / zoom + rerouteWidth;
-
-              const lineCurveSearch = createCurvature(
-                line_x,
-                line_y,
-                eX,
-                eY,
-                reroute_curvature,
-                'other'
-              );
-
-              reoute_fix.push(lineCurveSearch);
-            }
-          } else if (i === points.length - 1) {
-            const id_search = item.parentElement!.classList[1].replace(
-              'node_in_',
-              ''
-            );
-
-            const elemtsearchIn = this.container.querySelector<HTMLElement>(
-              `#${id_search} .${item.parentElement!.classList[4]}`
+            const slotOrigin = this.container.querySelector<HTMLElement>(
+              `#${nodeOrigin} .${slotOriginName}`
             )!;
 
-            const { x: elSearchX, y: elSearchY } =
-              elemtsearchIn.getBoundingClientRect();
+            const { x: slotX, y: slotY } = slotOrigin.getBoundingClientRect();
 
-            const eX = elemtsearchIn.offsetWidth / 2 + (elSearchX - pcX) / zoom;
-            const eY =
-              elemtsearchIn.offsetHeight / 2 + (elSearchY - pcY) / zoom;
+            const init_x = slotOrigin.offsetWidth / 2 + (slotX - pcX) / zoom;
+            const init_y = slotOrigin.offsetHeight / 2 + (slotY - pcY) / zoom;
 
-            const line_x = (elX - pcX) / zoom + rerouteWidth;
-            const line_y = (elY - pcY) / zoom + rerouteWidth;
-
-            const lineCurveSearch = createCurvature(
-              line_x,
-              line_y,
-              eX,
-              eY,
+            const lineCurve1 = createCurvature(
+              init_x,
+              init_y,
+              start_x,
+              start_y,
               reroute_curvature_start_end,
-              'close'
+              'open'
             );
 
-            reoute_fix.push(lineCurveSearch);
-          } else {
-            const elemtsearch = points[i + 1];
-
-            const { x: elSearchX, y: elSearchY } =
-              elemtsearch.getBoundingClientRect();
-
-            const eX = (elSearchX - pcX) / zoom + rerouteWidth;
-            const eY = (elSearchY - pcY) / zoom + rerouteWidth;
-
-            const line_x = (elX - pcX) / zoom + rerouteWidth;
-            const line_y = (elY - pcY) / zoom + rerouteWidth;
-
-            const lineCurveSearch = createCurvature(
-              line_x,
-              line_y,
-              eX,
-              eY,
-              reroute_curvature,
-              'other'
-            );
-
-            reoute_fix.push(lineCurveSearch);
+            reoute_fix.push(lineCurve1);
           }
-        });
+
+          let endCurveType: 'close' | 'other';
+          let end_x: number;
+          let end_y: number;
+
+          if (i === points.length - 1) {
+            const { node_in: nodeDestiny, inputTo: slotDestName } =
+              item.parentElement!.dataset;
+
+            const slotDest = this.container.querySelector<HTMLElement>(
+              `#${nodeDestiny} .${slotDestName}`
+            )!;
+
+            const { x: slotX, y: slotY } = slotDest.getBoundingClientRect();
+
+            end_x = (slotX - pcX) / zoom + slotDest.offsetWidth / 2;
+            end_y = (slotY - pcY) / zoom + slotDest.offsetHeight / 2;
+            endCurveType = 'close';
+          } else {
+            const point = points[i + 1];
+            const { x: pointX, y: pointY } = point.getBoundingClientRect();
+
+            end_x = (pointX - pcX) / zoom + rerouteWidth;
+            end_y = (pointY - pcY) / zoom + rerouteWidth;
+            endCurveType = 'other';
+          }
+
+          const lineCurve2 = createCurvature(
+            start_x,
+            start_y,
+            end_x,
+            end_y,
+            reroute_curvature,
+            endCurveType
+          );
+
+          reoute_fix.push(lineCurve2);
+        }
+
         if (reroute_fix_curvature) {
           reoute_fix.forEach((itempath, i) => {
             el.children[i].setAttributeNS(null, 'd', itempath);
           });
         } else {
-          const linecurve = reoute_fix.join('');
+          const linecurve = reoute_fix.join(' ');
           el.children[0].setAttributeNS(null, 'd', linecurve);
         }
       }
