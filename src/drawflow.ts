@@ -7,16 +7,15 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { v4 as uuidv4 } from 'uuid';
 import { NodeRemoveButtonComponent } from './components/node-remove-button.component';
 import { NodeComponent } from './components/node.component';
-import { wrapNodeData } from './proxy-utils';
 import {
   DrawflowConnection,
-  DrawflowConnectionDetail,
   DrawFlowEditorMode,
   DrawflowEventsMap,
   DrawflowExport,
   DrawflowNode,
   DrawflowNodeLive,
   Vue,
+  wrapNodeData,
 } from './types';
 import { createCurvature, html, htmlToTemplate } from './utils';
 
@@ -693,12 +692,12 @@ export class Drawflow extends EventTarget {
       const nodeId = nodeUpdate.slice(5);
       const searchConnection = this.data[this.module].data[nodeId].outputs[
         output_class
-      ].connections.findIndex(
+      ].findIndex(
         (item) => item.node === nodeUpdateIn && item.output === input_class
       );
 
       const points =
-        this.data[this.module].data[nodeId].outputs[output_class].connections[
+        this.data[this.module].data[nodeId].outputs[output_class][
           searchConnection
         ].points;
       if (points)
@@ -833,12 +832,14 @@ export class Drawflow extends EventTarget {
             const id_input = input_id.slice(5);
             const id_output = output_id.slice(5);
 
-            this.data[this.module].data[id_output].outputs[
-              output_class
-            ].connections.push({ node: id_input, output: input_class });
-            this.data[this.module].data[id_input].inputs[
-              input_class
-            ].connections.push({ node: id_output, input: output_class });
+            this.data[this.module].data[id_output].outputs[output_class].push({
+              node: id_input,
+              output: input_class,
+            });
+            this.data[this.module].data[id_input].inputs[input_class].push({
+              node: id_output,
+              input: output_class,
+            });
             this.updateConnectionNodes(`node-${id_output}`);
             this.updateConnectionNodes(`node-${id_input}`);
             this.dispatchEvent(
@@ -1203,24 +1204,20 @@ export class Drawflow extends EventTarget {
     if (nodeOneModule === this.getModuleFromNodeId(id_input)) {
       const dataNode: DrawflowNode = this._getNodeFromId(id_output);
 
-      const exist: boolean = !!dataNode.outputs[output_class]?.connections.find(
+      const exist: boolean = !!dataNode.outputs[output_class]?.find(
         ({ node, output }) => node === id_input && output === input_class
       );
 
       if (exist) return;
 
       //Create Connection
-      this.data[nodeOneModule].data[id_output].outputs[
-        output_class
-      ]?.connections.push({
+      this.data[nodeOneModule].data[id_output].outputs[output_class]?.push({
         node: id_input.toString(),
         output: input_class,
         pathClass: connection_class,
       });
 
-      this.data[nodeOneModule].data[id_input].inputs[
-        input_class
-      ]?.connections.push({
+      this.data[nodeOneModule].data[id_input].inputs[input_class]?.push({
         node: id_output.toString(),
         input: output_class,
         pathClass: connection_class,
@@ -1800,8 +1797,7 @@ export class Drawflow extends EventTarget {
 
     const nodeId = nodeUpdate.slice(5);
 
-    const nodeConnections =
-      this._getNodeFromId(nodeId).outputs[sourceSlot].connections;
+    const nodeConnections = this._getNodeFromId(nodeId).outputs[sourceSlot];
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const connection = nodeConnections.find(
@@ -1811,7 +1807,7 @@ export class Drawflow extends EventTarget {
     connection.points ??= [];
 
     const newPoint: Exclude<
-      DrawflowConnectionDetail<any>['points'],
+      DrawflowConnection<any>['points'],
       undefined
     >[number] = { pos_x, pos_y };
 
@@ -1850,7 +1846,7 @@ export class Drawflow extends EventTarget {
 
     const searchConnection = this.data[this.module].data[nodeId].outputs[
       output_class
-    ].connections.findIndex(
+    ].findIndex(
       (item) => item.node === nodeUpdateIn && item.output === input_class
     );
 
@@ -1871,7 +1867,7 @@ export class Drawflow extends EventTarget {
       numberPointPosition--;
     }
 
-    this.data[this.module].data[nodeId].outputs[output_class].connections[
+    this.data[this.module].data[nodeId].outputs[output_class][
       searchConnection
     ].points?.splice(numberPointPosition, 1);
 
@@ -2042,10 +2038,12 @@ export class Drawflow extends EventTarget {
       dataNode.id
     )!.getBoundingClientRect();
 
-    if (dataNode.pos_x + width > this.canvasW)
-      this.canvasW = dataNode.pos_x + width;
-    if (dataNode.pos_y + height > this.canvasH)
-      this.canvasH = dataNode.pos_y + height;
+    if (dataNode.pos_x + width > this.canvasW) {
+      this.canvasW = dataNode.pos_x + width + 40;
+    }
+    if (dataNode.pos_y + height > this.canvasH) {
+      this.canvasH = dataNode.pos_y + height + 40;
+    }
   }
 
   /**
@@ -2121,12 +2119,12 @@ export class Drawflow extends EventTarget {
 
       const json_inputs: DrawflowNode['inputs'] = {};
       for (let x = 0; x < num_in; x++) {
-        json_inputs[`input_${x + 1}`] = { connections: [] };
+        json_inputs[`input_${x + 1}`] = [];
       }
 
       const json_outputs: DrawflowNode['outputs'] = {};
       for (let x = 0; x < num_out; x++) {
-        json_outputs[`output_${x + 1}`] = { connections: [] };
+        json_outputs[`output_${x + 1}`] = [];
       }
 
       json = {
@@ -2165,7 +2163,7 @@ export class Drawflow extends EventTarget {
       dataNode.outputs
     ) as (keyof typeof dataNode.outputs)[]) {
       for (const { node: input_id, output: input_class, points } of dataNode
-        .outputs[output_item].connections) {
+        .outputs[output_item]) {
         if (points === undefined) continue;
 
         for (const [i, item] of points.entries()) {
@@ -2173,7 +2171,7 @@ export class Drawflow extends EventTarget {
             dataNode.id,
             input_id,
             output_item,
-            input_class
+            input_class!
           );
 
           if (reroute_fix_curvature) {
@@ -2217,9 +2215,7 @@ export class Drawflow extends EventTarget {
     const infoNode = this._getNodeFromId(id);
     const numInput = Object.keys(infoNode.inputs).length + 1;
 
-    infoNode.inputs[`input_${numInput}`] = {
-      connections: [],
-    };
+    infoNode.inputs[`input_${numInput}`] = [];
 
     if (this.module === moduleName) {
       const input = document.createElement('div');
@@ -2243,9 +2239,7 @@ export class Drawflow extends EventTarget {
 
     const numOutput = Object.keys(infoNode.outputs).length + 1;
 
-    infoNode.outputs[`output_${numOutput}`] = {
-      connections: [],
-    };
+    infoNode.outputs[`output_${numOutput}`] = [];
 
     if (this.module === moduleName) {
       //Draw output
@@ -2275,26 +2269,24 @@ export class Drawflow extends EventTarget {
         ?.remove();
     }
 
-    for (const connectionDetail of infoNode.inputs[inputId].connections) {
+    for (const connectionDetail of infoNode.inputs[inputId]) {
       const id_output = connectionDetail.node;
       const output_class = connectionDetail.input;
-      this.removeSingleConnection(id_output, id, output_class, inputId);
+      this.removeSingleConnection(id_output, id, output_class!, inputId);
     }
 
     delete infoNode.inputs[inputId];
 
-    const connections: DrawflowConnection<'input'>[] = Object.values(
-      infoNode.inputs
-    );
+    const inputSlots = Object.values(infoNode.inputs);
 
     infoNode.inputs = {};
 
     const input_class_id = inputId.slice(6) as `${number}`;
 
-    let nodeUpdates: DrawflowConnectionDetail<'input'>[] = [];
+    let nodeUpdates: DrawflowConnection<'input'>[] = [];
 
-    connections.forEach((item, i) => {
-      item.connections.forEach((itemx) => nodeUpdates.push(itemx));
+    inputSlots.forEach((item, i) => {
+      item.forEach((itemx) => nodeUpdates.push(itemx));
 
       infoNode.inputs[`input_${i + 1}`] = item;
     });
@@ -2316,40 +2308,39 @@ export class Drawflow extends EventTarget {
     }
 
     for (const itemx of nodeUpdates) {
-      this.data[moduleName].data[itemx.node].outputs[
-        itemx.input
-      ].connections.forEach((itemz, g) => {
-        if (itemz.node === id) {
-          const output_id = itemz.output.slice(6) as `${number}`;
+      this.data[moduleName].data[itemx.node].outputs[itemx.input!].forEach(
+        (itemz, g) => {
+          if (itemz.node === id) {
+            const output_id = itemz.output!.slice(6) as `${number}`;
 
-          if (parseInt(input_class_id) < parseInt(output_id)) {
-            if (this.module === moduleName) {
-              const ele = this._getConnectionEl(
-                itemx.node,
-                id,
-                itemx.input,
-                `input_${output_id}`
-              );
+            if (parseInt(input_class_id) < parseInt(output_id)) {
+              if (this.module === moduleName) {
+                const ele = this._getConnectionEl(
+                  itemx.node,
+                  id,
+                  itemx.input!,
+                  `input_${output_id}`
+                );
 
-              ele?.classList.remove(`input_${output_id}`);
-              ele?.classList.add(`input_${+output_id - 1}`);
+                ele?.classList.remove(`input_${output_id}`);
+                ele?.classList.add(`input_${+output_id - 1}`);
+              }
+
+              const connDetail: DrawflowConnection<'output'> = {
+                node: itemz.node,
+                output: `input_${+output_id - 1}`,
+              };
+
+              if (itemz.points) {
+                connDetail.points = itemz.points;
+              }
+
+              this.data[moduleName].data[itemx.node].outputs[itemx.input!][g] =
+                connDetail;
             }
-
-            const connDetail: DrawflowConnectionDetail<'output'> = {
-              node: itemz.node,
-              output: `input_${+output_id - 1}`,
-            };
-
-            if (itemz.points) {
-              connDetail.points = itemz.points;
-            }
-
-            this.data[moduleName].data[itemx.node].outputs[
-              itemx.input
-            ].connections[g] = connDetail;
           }
         }
-      });
+      );
     }
 
     this.updateConnectionNodes(`node-${id}`);
@@ -2372,24 +2363,22 @@ export class Drawflow extends EventTarget {
         ?.remove();
     }
 
-    for (const { node, output } of infoNode.outputs[outputId].connections) {
-      this.removeSingleConnection(id, node, outputId, output);
+    for (const { node, output } of infoNode.outputs[outputId]) {
+      this.removeSingleConnection(id, node, outputId, output!);
     }
 
     delete infoNode.outputs[outputId];
 
-    const connections: DrawflowConnection<'output'>[] = Object.values(
-      infoNode.outputs
-    );
+    const outputSlots = Object.values(infoNode.outputs);
 
     infoNode.outputs = {};
 
     const output_class_id = outputId.slice(7) as `${number}`;
 
-    let nodeUpdates: DrawflowConnectionDetail<'output'>[] = [];
+    let nodeUpdates: DrawflowConnection<'output'>[] = [];
 
-    connections.forEach((item, i) => {
-      item.connections.forEach((itemx) => {
+    outputSlots.forEach((item, i) => {
+      item.forEach((itemx) => {
         nodeUpdates.push({ node: itemx.node, output: itemx.output });
       });
 
@@ -2414,40 +2403,39 @@ export class Drawflow extends EventTarget {
     }
 
     nodeUpdates.forEach((itemx) => {
-      this.data[moduleName].data[itemx.node].inputs[
-        itemx.output
-      ].connections.forEach((itemz, g) => {
-        if (itemz.node == id) {
-          const input_id = itemz.input.slice(7) as `${number}`;
-          if (parseInt(output_class_id) < parseInt(input_id)) {
-            if (this.module === moduleName) {
-              const ele = this._getConnectionEl(
-                id,
-                itemx.node,
-                `output_${input_id}`,
-                itemx.output
-              );
-              ele?.classList.remove(`output_${input_id}`);
-              ele?.classList.remove(itemx.output);
-              ele?.classList.add(`output_${+input_id - 1}`);
-              ele?.classList.add(itemx.output);
+      this.data[moduleName].data[itemx.node].inputs[itemx.output!].forEach(
+        (itemz, g) => {
+          if (itemz.node == id) {
+            const input_id = itemz.input!.slice(7) as `${number}`;
+            if (parseInt(output_class_id) < parseInt(input_id)) {
+              if (this.module === moduleName) {
+                const ele = this._getConnectionEl(
+                  id,
+                  itemx.node,
+                  `output_${input_id}`,
+                  itemx.output!
+                );
+                ele?.classList.remove(`output_${input_id}`);
+                ele?.classList.remove(itemx.output!);
+                ele?.classList.add(`output_${+input_id - 1}`);
+                ele?.classList.add(itemx.output!);
+              }
+
+              const connDetail: DrawflowConnection<'input'> = {
+                node: itemz.node,
+                input: `output_${+input_id - 1}`,
+              };
+
+              if (itemz.points) {
+                connDetail.points = itemz.points;
+              }
+
+              this.data[moduleName].data[itemx.node].inputs[itemx.output!][g] =
+                connDetail;
             }
-
-            const connDetail: DrawflowConnectionDetail<'input'> = {
-              node: itemz.node,
-              input: `output_${+input_id - 1}`,
-            };
-
-            if (itemz.points) {
-              connDetail.points = itemz.points;
-            }
-
-            this.data[moduleName].data[itemx.node].inputs[
-              itemx.output
-            ].connections[g] = connDetail;
           }
         }
-      });
+      );
     });
 
     this.updateConnectionNodes(`node-${id}`);
@@ -2458,16 +2446,20 @@ export class Drawflow extends EventTarget {
    */
   removeNodeId(
     nodeId: DrawflowNode['id'],
-    dispatch: boolean = true,
-    preDispatch: boolean = true
+    options?: { notify?: boolean; cancelable?: boolean }
   ): void {
-    if (
-      preDispatch &&
-      !this.dispatchEvent(
-        new CustomEvent('nodeRemove', { detail: { nodeId }, cancelable: true })
-      )
-    )
-      return;
+    const { notify = true, cancelable = true } = options ?? {};
+
+    if (notify) {
+      const nodeRemoveEvent = new CustomEvent('nodeRemove', {
+        detail: { nodeId },
+        cancelable,
+      });
+
+      const canceled = !this.dispatchEvent(nodeRemoveEvent);
+
+      if (cancelable && canceled) return;
+    }
 
     const moduleName = this.getModuleFromNodeId(nodeId);
 
@@ -2483,7 +2475,7 @@ export class Drawflow extends EventTarget {
 
     delete this.data[moduleName].data[nodeId];
 
-    if (dispatch)
+    if (notify)
       this.dispatchEvent(
         new CustomEvent('nodeRemoved', {
           detail: { nodeId, nodeData },
@@ -2532,11 +2524,11 @@ export class Drawflow extends EventTarget {
       const outputNode = this._getNodeFromId(sourceNodeId);
       const inputNode = this._getNodeFromId(targetNodeId);
 
-      const index_out = outputNode.outputs[sourceSlot].connections.findIndex(
+      const index_out = outputNode.outputs[sourceSlot].findIndex(
         (item) => item.node == targetNodeId && item.output === targetSlot
       );
 
-      const index_in = inputNode.inputs[targetSlot].connections.findIndex(
+      const index_in = inputNode.inputs[targetSlot].findIndex(
         (item) => item.node == sourceNodeId && item.input === sourceSlot
       );
 
@@ -2550,9 +2542,9 @@ export class Drawflow extends EventTarget {
           )?.remove();
         }
 
-        outputNode.outputs[sourceSlot].connections.splice(index_out, 1);
+        outputNode.outputs[sourceSlot].splice(index_out, 1);
 
-        inputNode.inputs[targetSlot].connections.splice(index_in, 1);
+        inputNode.inputs[targetSlot].splice(index_in, 1);
 
         this.dispatchEvent(
           new CustomEvent('connectionRemoved', {
@@ -2572,26 +2564,26 @@ export class Drawflow extends EventTarget {
    * @param nodeId
    */
   removeConnectionNodeId(nodeId: DrawflowNode['id']): void {
-    const { inputs, outputs } = this._getNodeFromId(nodeId);
+    const { inputs, outputs } = this.getNodeFromId(nodeId);
 
-    for (const [sourceSlot, { connections }] of Object.entries(outputs)) {
+    for (const [sourceSlot, connections] of outputs.entries()) {
       for (const { node: targetNodeId, output: targetSlot } of connections) {
         this.removeSingleConnection(
           nodeId,
           targetNodeId,
-          sourceSlot as `output_${number}`,
-          targetSlot
+          sourceSlot,
+          targetSlot!
         );
       }
     }
 
-    for (const [targetSlot, { connections }] of Object.entries(inputs)) {
+    for (const [targetSlot, connections] of inputs.entries()) {
       for (const { node: sourceNodeId, input: sourceSlot } of connections) {
         this.removeSingleConnection(
           sourceNodeId,
           nodeId,
-          sourceSlot,
-          targetSlot as `input_${number}`
+          sourceSlot!,
+          targetSlot
         );
       }
     }

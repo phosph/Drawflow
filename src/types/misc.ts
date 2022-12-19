@@ -1,0 +1,1 @@
+export type DrawFlowEditorMode = 'edit' | 'fixed' | 'view';

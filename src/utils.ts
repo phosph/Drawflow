@@ -14,25 +14,42 @@ export function debugeable() {
     propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
-    const _value = descriptor.value;
-    descriptor.value = function (...props: any[]) {
+    let _value: any;
+    let isSet: boolean = false;
+    if (descriptor.set) {
+      _value = descriptor.set;
+      isSet = true;
+    } else {
+      _value = descriptor.value;
+    }
+
+    const func = function (this: any, ...props: any[]) {
+      const params = props.map(() => '%o').join('\n');
+
       console.group(
-        `%c${this.constructor.name}%c.%c${propertyKey}%c(${((s) =>
-          s ? s + '\n' : s)(props.map(() => '\n%o').join(','))})`,
+        `%c${this.constructor.name}%c.%c${propertyKey}%c${
+          isSet ? ` = ${params}` : params ? `(\n${params}\n)` : '()'
+        }`,
         'color: #55B4C0',
         '',
         'color: #d96971; font-weight: bold',
         '',
         ...props
       );
-      console.group();
+      // console.group();
       const r = _value.apply(this, props);
-      console.groupEnd();
-      console.debug('returns:', r);
+      // console.groupEnd();
+      if (!isSet) console.debug('%creturn%c %o', 'color: #ff7bc8;', '', r);
 
       console.groupEnd();
       return r;
     };
+
+    if (descriptor.set) {
+      descriptor.set = func;
+    } else {
+      descriptor.value = func;
+    }
   };
 }
 

@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { DrawFlowEditorMode } from "./misc";
+import type { DrawflowNode } from "./node";
 
 export interface ConnectionEvent {
   /**
@@ -37,74 +38,6 @@ export interface ConnectionStartEvent {
 export interface MousePositionEvent {
   x: number;
   y: number;
-}
-
-export interface DrawflowExport {
-  Home: DrawflowModuleData; // always present
-  [moduleName: string]: DrawflowModuleData;
-}
-
-export interface DrawflowModuleData {
-  data: {
-    [nodeKey: DrawflowNode['id']]: DrawflowNode;
-  };
-}
-
-export interface DrawflowNode {
-  classname: string;
-  data: Record<string, unknown>;
-  html: string;
-  id: string;
-  inputs: Record<`input_${number}`, DrawflowConnection<'input'>>;
-  name: string;
-  outputs: Record<`output_${number}`, DrawflowConnection<'output'>>;
-  pos_x: number;
-  pos_y: number;
-  typenode: boolean | 'vue';
-  preventRemove: boolean;
-}
-
-export interface DrawflowNodeLive extends Readonly<DrawflowNode> {
-  pos_x: number;
-  pos_y: number;
-  el$: HTMLElement | null;
-
-  /** inputs[0] === inputs['input_1'] */
-  inputs: Readonly<
-    Record<`input_${number}`, DrawflowConnection<'input'>> & {
-      [key: number]: DrawflowConnection<'input'> | undefined;
-      [Symbol.iterator](): IterableIterator<DrawflowConnection<'input'>>
-    }
-  >;
-
-  /** outputs[0] === outputs['output_1'] */
-  outputs: Readonly<
-    Record<`output_${number}`, DrawflowConnection<'output'>> & {
-      [key: number]: DrawflowConnection<'output'> | undefined;
-      [Symbol.iterator](): IterableIterator<DrawflowConnection<'output'>>
-    }
-  >;
-}
-
-export interface DrawflowConnection<T extends 'input' | 'output'> {
-  connections: DrawflowConnectionDetail<T>[];
-}
-
-export type DrawflowConnectionDetail<T extends 'input' | 'output'> = {
-  node: DrawflowNode['id'];
-  points?: { pos_x: number; pos_y: number }[];
-  pathClass?: string;
-} & (T extends 'input'
-  ? { input: `output_${number}` }
-  : { output: `input_${number}` });
-
-export type DrawFlowEditorMode = 'edit' | 'fixed' | 'view';
-
-export interface Vue {
-  version: string;
-  h(...args: any): any;
-  new (...args: any[]): any;
-  render(...args: any[]): any;
 }
 
 export interface DrawflowEventsMap {
