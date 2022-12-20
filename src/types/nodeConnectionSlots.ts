@@ -1,4 +1,4 @@
-import type { Drawflow } from 'src/drawflow';
+import type { Drawflow } from '../drawflow';
 import {
   DrawflowConnection,
   DrawflowConnectionLive,
@@ -13,7 +13,7 @@ export type DrawflowConnectionSlotsMap<T extends 'input' | 'output'> = Record<
 export type DrawflowConnectionSlotsMapLive<T extends 'input' | 'output'> =
   Record<`${T}_${number}`, DrawflowConnectionLive<T>[]> & {
     readonly [index: number]: DrawflowConnectionLive<T>[];
-    [Symbol.iterator](): IterableIterator<DrawflowConnectionLive<T>>[];
+    [Symbol.iterator](): IterableIterator<DrawflowConnectionLive<T>[]>;
     outputsCount: number;
     entries(): IterableIterator<
       [name: `${T}_${number}`, value: DrawflowConnectionLive<T>[]]

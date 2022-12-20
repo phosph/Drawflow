@@ -1,4 +1,4 @@
-import type { Drawflow } from 'src/drawflow';
+import type { Drawflow } from '../drawflow';
 import {
   DrawflowConnectionSlotsMap,
   DrawflowConnectionSlotsMapLive,
