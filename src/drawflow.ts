@@ -27,7 +27,7 @@ export class Drawflow extends EventTarget {
   /**
    * doesn't dispatch any event if true
    */
-  protected _silentMode: boolean = false;
+  silentMode: boolean = false;
 
   protected readonly precanvas: HTMLElement = document.createElement('div');
 
@@ -960,7 +960,7 @@ export class Drawflow extends EventTarget {
   /** end event handlers */
 
   start() {
-    this._silentMode = true;
+    this.silentMode = true;
     this.container.classList.add('parent-drawflow');
 
     this.container.tabIndex = 0;
@@ -1044,7 +1044,7 @@ export class Drawflow extends EventTarget {
 
     this.load();
 
-    this._silentMode = false;
+    this.silentMode = false;
 
     this.dispatchEvent(new CustomEvent('initialized'));
   }
@@ -2533,7 +2533,7 @@ export class Drawflow extends EventTarget {
   override dispatchEvent<K extends keyof DrawflowEventsMap>(
     event: DrawflowEventsMap[K]
   ): boolean {
-    if (this._silentMode) return true;
+    if (this.silentMode) return true;
 
     super.dispatchEvent(new AllEvent(event.type as K, event.detail));
 
