@@ -2558,6 +2558,99 @@ export class Drawflow extends EventTarget {
       this.connection_selected = null;
     }
   }
+
+  addReroutePoint(
+    x: number,
+    y: number,
+    sourceNodeId: DrawflowNode['id'],
+    targetNodeId: DrawflowNode['id'],
+    sourceSlot: `output_${number}`,
+    targetSlot: `input_${number}`
+  ) {
+    // const nodeOrigin =  this.
+    const selector = `.connection.node_out_node-${sourceNodeId}.node_in_node-${targetNodeId}.${sourceSlot}.${targetSlot}`;
+    console.log(selector);
+    const ele = this.precanvas.querySelector<SVGSVGElement>(selector);
+
+    if (!ele) throw new Error('no ele');
+
+    /** render point */
+    const point = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'circle'
+    );
+    point.classList.add('point');
+    point.setAttributeNS(null, 'cx', x.toString());
+    point.setAttributeNS(null, 'cy', y.toString());
+    point.setAttributeNS(null, 'r', this.reroute_width.toString());
+
+    let position_add_array_point = 0;
+    if (this.reroute_fix_curvature) {
+      const numberPoints = ele.querySelectorAll('.main-path').length;
+
+      const path = document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'path'
+      );
+
+      path.classList.add('main-path');
+      path.setAttributeNS(null, 'd', '');
+
+      ele.insertBefore(path, ele.children[numberPoints]);
+
+      if (numberPoints === 1) {
+        ele.appendChild(point);
+      } else {
+        const search_point = Array.from(ele.children).indexOf(ele);
+
+        position_add_array_point = search_point;
+
+        ele.insertBefore(point, ele.children[search_point + numberPoints + 1]);
+      }
+    } else {
+      ele.appendChild(point);
+    }
+    /** end render point */
+
+    const nodeConnections =
+      this._getNodeFromId(sourceNodeId).outputs[sourceSlot];
+    console.log(nodeConnections);
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const connection = nodeConnections.find(
+      (item) => item.node === targetNodeId && item.output === targetSlot
+    )!;
+
+    connection.points ??= [];
+
+    const newPoint: Exclude<
+      DrawflowConnection<any>['points'],
+      undefined
+    >[number] = { pos_x: x, pos_y: y };
+
+    if (this.reroute_fix_curvature) {
+      if (position_add_array_point > 0 || !!connection.points.length) {
+        connection.points.splice(position_add_array_point, 0, newPoint);
+      } else {
+        connection.points.push(newPoint);
+      }
+
+      ele.querySelectorAll('.main-path').forEach((item) => {
+        item.classList.remove('selected');
+      });
+    } else {
+      connection.points.push(newPoint);
+    }
+
+    this.dispatchEvent(
+      new CustomEvent('addReroute', {
+        detail: { nodeId: targetNodeId },
+        cancelable: false,
+      })
+    );
+
+    this.updateConnectionNodes(`node-${sourceNodeId}`);
+  }
 }
 
 export class AllEvent<K extends keyof DrawflowEventsMap> extends Event {
