@@ -112,9 +112,10 @@
   stroke: #43b993;
 }
 
-.drawflow[data-mode='edit'] .connection .point {
+.drawflow[data-mode='edit']:not(.nodes-node-dragables) .connection .point {
   cursor: move;
 }
+
 .drawflow .connection .point {
   stroke: black;
   stroke-width: 2;

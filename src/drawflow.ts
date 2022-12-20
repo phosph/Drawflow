@@ -449,9 +449,6 @@ export class Drawflow extends EventTarget {
         this.ele_selected = target.closest('.parent-drawflow');
         e.preventDefault();
       }
-      // } else if (this.block_position) {
-      //   e.preventDefault();
-      //   this.ele_selected = target.closest('.parent-drawflow');
     } else {
       this.first_click = target;
       this.ele_selected = target;
@@ -509,24 +506,10 @@ export class Drawflow extends EventTarget {
         this.connection_selected = null;
       }
       this.drawConnection(e.target as Element);
-    } else if (this.ele_selected?.classList.contains('parent-drawflow')) {
-      console.log('parent-drawflow');
-      if (this.node_selected != null) {
-        this.node_selected.classList.remove('selected');
-        this.node_selected = null;
-        this.dispatchEvent(
-          new CustomEvent('nodeUnselected', {
-            cancelable: false,
-          })
-        );
-      }
-      if (this.connection_selected != null) {
-        this.connection_selected.classList.remove('selected');
-        this.removeReouteConnectionSelected();
-        this.connection_selected = null;
-      }
-      this.editor_selected = true;
-    } else if (this.ele_selected?.classList.contains('drawflow')) {
+    } else if (
+      this.ele_selected?.classList.contains('parent-drawflow') ||
+      this.ele_selected?.classList.contains('drawflow')
+    ) {
       if (this.node_selected != null) {
         this.node_selected.classList.remove('selected');
         this.node_selected = null;
@@ -578,8 +561,10 @@ export class Drawflow extends EventTarget {
         }
       }
     } else if (this.ele_selected?.classList.contains('point')) {
-      this.drag_point = true;
-      this.ele_selected.classList.add('selected');
+      if (!this.block_position) {
+        this.drag_point = true;
+        this.ele_selected.classList.add('selected');
+      }
     }
 
     if (e.type === 'touchstart') {
@@ -603,8 +588,6 @@ export class Drawflow extends EventTarget {
     ) {
       e.preventDefault();
     }
-
-    // this.dispatch('clickEnd', e);
   }
 
   private position(e: TouchEvent | MouseEvent) {
@@ -1276,7 +1259,7 @@ export class Drawflow extends EventTarget {
     for (const el of this.container.querySelectorAll<SVGElement>(
       `.${idSearchOut}`
     )) {
-      const points = el.querySelectorAll<HTMLElement>('.point');
+      const points = el.querySelectorAll<SVGCircleElement>('.point');
 
       if (!points.length) {
         const elStart = this.container.querySelector<HTMLElement>(
@@ -1309,29 +1292,26 @@ export class Drawflow extends EventTarget {
       } else {
         const reoute_fix: string[] = [];
         for (let i = 0; i < points.length; i++) {
-          const item = points[i];
+          const point = points[i];
 
-          const { x: elX, y: elY } = item.getBoundingClientRect();
-          const start_x = (elX - pcX) / zoom + rerouteWidth;
+          const { x: elX, y: elY } = point.getBoundingClientRect();
+          const start_x = (elX - pcX) / zoom + rerouteWidth * 2;
           const start_y = (elY - pcY) / zoom + rerouteWidth;
 
           if (i === 0) {
-            const elemtsearchOut = this.container.querySelector<HTMLElement>(
-              `#${id} .${item.parentElement!.classList[3]}`
+            const sourceSlot = this.container.querySelector<HTMLElement>(
+              `#${id} .${point.parentElement!.classList[3]}`
             )!;
 
-            const { x: elSearchOutX, y: elSearchOutY } =
-              elemtsearchOut.getBoundingClientRect();
+            const { x: slotX, y: slotY } = sourceSlot.getBoundingClientRect();
 
-            const init_x =
-              (elSearchOutX - pcX) / zoom + elemtsearchOut.offsetWidth / 2;
-            const init_y =
-              (elSearchOutY - pcY) / zoom + elemtsearchOut.offsetHeight / 2;
+            const init_x = (slotX - pcX) / zoom + sourceSlot.offsetWidth / 2;
+            const init_y = (slotY - pcY) / zoom + sourceSlot.offsetHeight / 2;
 
             const lineCurve1 = createCurvature(
               init_x,
               init_y,
-              start_x,
+              start_x - rerouteWidth * 2,
               start_y,
               reroute_curvature_start_end,
               'open'
@@ -1345,32 +1325,28 @@ export class Drawflow extends EventTarget {
           let end_y: number;
 
           if (i === points.length - 1) {
-            const id_search = item.parentElement!.classList[1].replace(
-              'node_in_',
-              ''
-            );
-            const elemtsearch = this.container.querySelector<HTMLElement>(
-              `#${id_search} .${item.parentElement!.classList[4]}`
+            const id_search = point.parentElement!.classList[1].slice(8);
+            const targetSlot = this.container.querySelector<HTMLElement>(
+              `#${id_search} .${point.parentElement!.classList[4]}`
             )!;
 
-            const { x: elSearchX, y: elSearchY } =
-              elemtsearch.getBoundingClientRect();
+            const { x: slotX, y: slotY } = targetSlot.getBoundingClientRect();
 
-            end_x = (elSearchX - pcX) / zoom + elemtsearch.offsetWidth / 2;
-            end_y = (elSearchY - pcY) / zoom + elemtsearch.offsetHeight / 2;
+            end_x = (slotX - pcX) / zoom + targetSlot.offsetWidth / 2;
+            end_y = (slotY - pcY) / zoom + targetSlot.offsetHeight / 2;
             endCurveType = 'close';
           } else {
-            const elemtsearch = points[i + 1];
+            const nextPoint = points[i + 1];
 
             const { x: elSearchX, y: elSearchY } =
-              elemtsearch.getBoundingClientRect();
+              nextPoint.getBoundingClientRect();
 
             end_x = (elSearchX - pcX) / zoom + rerouteWidth;
             end_y = (elSearchY - pcY) / zoom + rerouteWidth;
             endCurveType = 'other';
           }
 
-          const lineCurveSearch = createCurvature(
+          const lineCurve = createCurvature(
             start_x,
             start_y,
             end_x,
@@ -1379,7 +1355,7 @@ export class Drawflow extends EventTarget {
             endCurveType
           );
 
-          reoute_fix.push(lineCurveSearch);
+          reoute_fix.push(lineCurve);
         }
 
         if (reroute_fix_curvature) {
@@ -1432,26 +1408,26 @@ export class Drawflow extends EventTarget {
         for (let i = 0; i < points.length; i++) {
           const item = points[i];
           const { x: elX, y: elY } = item.getBoundingClientRect();
-          const start_x = (elX - pcX) / zoom + rerouteWidth;
+          const start_x = (elX - pcX) / zoom + rerouteWidth * 2;
           const start_y = (elY - pcY) / zoom + rerouteWidth;
 
           if (i === 0) {
-            const { node_out: nodeOrigin, outputFrom: slotOriginName } =
+            const { node_out: sourceNode, outputFrom: sourceSlotName } =
               item.parentElement!.dataset;
 
-            const slotOrigin = this.container.querySelector<HTMLElement>(
-              `#${nodeOrigin} .${slotOriginName}`
+            const sourceSlot = this.container.querySelector<HTMLElement>(
+              `#${sourceNode} .${sourceSlotName}`
             )!;
 
-            const { x: slotX, y: slotY } = slotOrigin.getBoundingClientRect();
+            const { x: slotX, y: slotY } = sourceSlot.getBoundingClientRect();
 
-            const init_x = slotOrigin.offsetWidth / 2 + (slotX - pcX) / zoom;
-            const init_y = slotOrigin.offsetHeight / 2 + (slotY - pcY) / zoom;
+            const init_x = sourceSlot.offsetWidth / 2 + (slotX - pcX) / zoom;
+            const init_y = sourceSlot.offsetHeight / 2 + (slotY - pcY) / zoom;
 
             const lineCurve1 = createCurvature(
               init_x,
               init_y,
-              start_x,
+              start_x - rerouteWidth * 2,
               start_y,
               reroute_curvature_start_end,
               'open'
@@ -1465,17 +1441,17 @@ export class Drawflow extends EventTarget {
           let end_y: number;
 
           if (i === points.length - 1) {
-            const { node_in: nodeDestiny, inputTo: slotDestName } =
+            const { node_in: targetNode, inputTo: targetSlotName } =
               item.parentElement!.dataset;
 
-            const slotDest = this.container.querySelector<HTMLElement>(
-              `#${nodeDestiny} .${slotDestName}`
+            const targetSlot = this.container.querySelector<HTMLElement>(
+              `#${targetNode} .${targetSlotName}`
             )!;
 
-            const { x: slotX, y: slotY } = slotDest.getBoundingClientRect();
+            const { x: slotX, y: slotY } = targetSlot.getBoundingClientRect();
 
-            end_x = (slotX - pcX) / zoom + slotDest.offsetWidth / 2;
-            end_y = (slotY - pcY) / zoom + slotDest.offsetHeight / 2;
+            end_x = (slotX - pcX) / zoom + targetSlot.offsetWidth / 2;
+            end_y = (slotY - pcY) / zoom + targetSlot.offsetHeight / 2;
             endCurveType = 'close';
           } else {
             const point = points[i + 1];
