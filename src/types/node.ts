@@ -76,22 +76,37 @@ export const wrapNodeData = (
       newValue: unknown
     ): boolean => {
       switch (prop) {
-        case 'pos_x':
-          drawflowInstance.updateNodePosition(
-            target.id,
-            newValue as number,
-            target.pos_y,
-            drawflowInstance.getModuleFromNodeId(target.id)
-          );
+        case 'pos_x': {
+          if (typeof newValue !== 'number') {
+            throw new TypeError(`${prop} must be a number`);
+          }
+
+          if (target[prop] !== newValue) {
+            drawflowInstance.updateNodePosition(
+              target.id,
+              newValue as number,
+              target.pos_y,
+              drawflowInstance.getModuleFromNodeId(target.id)
+            );
+          }
           return true;
-        case 'pos_y':
-          drawflowInstance.updateNodePosition(
-            target.id,
-            target.pos_x,
-            newValue as number,
-            drawflowInstance.getModuleFromNodeId(target.id)
-          );
+        }
+
+        case 'pos_y': {
+          if (typeof newValue !== 'number') {
+            throw new TypeError(`${prop} must be a number`);
+          }
+
+          if (target[prop] !== newValue) {
+            drawflowInstance.updateNodePosition(
+              target.id,
+              target.pos_x,
+              newValue as number,
+              drawflowInstance.getModuleFromNodeId(target.id)
+            );
+          }
           return true;
+        }
       }
 
       return Reflect.set(target, prop, newValue);

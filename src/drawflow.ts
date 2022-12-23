@@ -1073,8 +1073,8 @@ export class Drawflow extends EventTarget {
     y: number,
     module: string = this.module
   ) {
-    if (x < 0) throw new RangeError('x must be greater or equal to 0');
-    if (y < 0) throw new RangeError('x must be greater or equal to 0');
+    if (x < 0) throw new RangeError(`x must be greater or equal to 0, received ${x}`);
+    if (y < 0) throw new RangeError(`y must be greater or equal to 0, received ${y}`);
 
     const ele_selected = this.getElementOfNode(id);
 
@@ -1086,7 +1086,7 @@ export class Drawflow extends EventTarget {
     this.data[module].data[id].pos_x = x;
     this.data[module].data[id].pos_y = y;
 
-    const { width, height } = ele_selected.getBoundingClientRect();
+    const { offsetWidth: width, offsetHeight: height } = ele_selected;
 
     if (x + width > this.canvasW) this.canvasW = x + width;
     if (y + height > this.canvasH) this.canvasH = y + height;
@@ -1799,9 +1799,9 @@ export class Drawflow extends EventTarget {
       }
     }
 
-    const { width, height } = this.getElementOfNode(
+    const { offsetWidth: width, offsetHeight: height } = this.getElementOfNode(
       dataNode.id
-    )!.getBoundingClientRect();
+    )!
 
     if (dataNode.pos_x + width > this.canvasW) {
       this.canvasW = dataNode.pos_x + width + 40;
